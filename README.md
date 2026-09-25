@@ -11,9 +11,9 @@ This repository tracks my progress through the course, one folder per class day.
 ```
 genai-b3/
 ├── README.md
-├── day1/        # Day 1 session material
-├── day2/        # Day 2 session material
-└── ...
+└── day1/              # Day 1 session material
+    └── tasks/         # Day 1 practice tasks
+        └── demo.py
 ```
 
 ## Progress Log
