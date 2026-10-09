@@ -70,6 +70,7 @@ dmypy.json
 # Environments and secrets
 .env
 .env.*
+!.env.example
 .venv
 env/
 venv/
