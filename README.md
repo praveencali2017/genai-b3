@@ -29,6 +29,7 @@ genai-b3/
         ├── product_management.py
         ├── hospital_management.py
         ├── hotel_booking.py
+        ├── restaurant_orders.py
         └── docs/              # Task sheet (DOCX)
 ```
 
@@ -44,6 +45,7 @@ genai-b3/
 | 6 | Product Inventory Management: add, re-price, restock, sell, delete products | [product_management.py](tasks/database_pgms/product_management.py) |
 | 7 | Hospital Patient Management: register, search, update diagnosis/doctor, discharge, delete patients | [hospital_management.py](tasks/database_pgms/hospital_management.py) |
 | 8 | Hotel Room Booking System: book, search, change room, check in/out, cancel, delete all bookings | [hotel_booking.py](tasks/database_pgms/hotel_booking.py) |
+| 9 | Restaurant Order Management: create, search, update quantity/bill, cancel, delete all orders | [restaurant_orders.py](tasks/database_pgms/restaurant_orders.py) |
 
 _Add a row after each task._
 
@@ -87,7 +89,7 @@ cd tasks/database_pgms
 python hospital_management.py
 ```
 
-Each management system creates its table (`student`, `book`, `product`, `patient`, `booking`) on first run, then shows a numbered menu.
+Each management system creates its table (`student`, `book`, `product`, `patient`, `booking`, `restaurant_order`) on first run, then shows a numbered menu.
 
 ## Acknowledgements
 
