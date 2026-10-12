@@ -5,8 +5,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Repo root: database_pgm -> 25_basic_pgms -> tasks -> <root>
-ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+# Repo root: database_pgms -> tasks -> <root>
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 REQUIRED_VARS = ("DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME")
 
 
