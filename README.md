@@ -14,6 +14,8 @@ genai-b3/
 ├── pyproject.toml             # Project metadata and dependencies (managed with uv)
 ├── uv.lock
 ├── .env.example               # Template for local database settings
+├── .github/workflows/
+│   └── lint.yml               # Runs ruff on PRs that change tasks/
 ├── day1/
 │   └── demo.py                # Day 1 session demo
 ├── src/genai_b3/              # Package entry point
@@ -60,7 +62,7 @@ Requires Python 3.12+ and a running MySQL server.
    git clone <repo-url>
    cd genai-b3
    ```
-2. Install dependencies (`mysql-connector-python`, `python-dotenv`):
+2. Install dependencies (`mysql-connector-python`, `python-dotenv`, plus `ruff` for linting):
    ```bash
    uv sync
    ```
@@ -92,6 +94,16 @@ python hospital_management.py
 ```
 
 Each management system creates its table (`student`, `book`, `product`, `patient`, `booking`, `restaurant_order`, `account`) on first run, then shows a numbered menu.
+
+## Linting
+
+`ruff` is pinned as a dev dependency, and every pull request that changes anything under `tasks/` runs it in GitHub Actions. Run the same check locally before pushing:
+
+```bash
+uv run ruff check tasks/
+```
+
+Add `--fix` to apply automatic fixes (for example, import ordering).
 
 ## Acknowledgements
 
