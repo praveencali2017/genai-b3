@@ -18,3 +18,14 @@ genai-b3 = "genai_b3:main"
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff==0.17.0",
+]
+
+[tool.ruff]
+# Task scripts import sibling modules (e.g. db_config) directly. Treating every
+# folder under tasks/ as a source root lets isort classify those imports as
+# first-party, including folders added later.
+src = ["src", "tasks/*"]
