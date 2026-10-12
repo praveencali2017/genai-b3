@@ -1,4 +1,5 @@
 from math import pi
+
 radius = int(input("Enter the radius of the circle: "))
 # Calculate area and circumference
 area = pi * radius ** 2
