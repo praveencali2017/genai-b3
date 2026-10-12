@@ -4,40 +4,88 @@ My day-to-day notes, code, and exercises from the **Generative AI** course (Batc
 
 ## About
 
-This repository tracks my progress through the course, one folder per class day. Each day's folder holds the material covered in that session: notes, notebooks, scripts, and assignments.
+This repository tracks my progress through the course. Class-day material lives in `dayN/` folders, and assignments live under `tasks/`: beginner Python exercises and a series of menu-driven MySQL management systems.
 
 ## Repository Structure
 
 ```
 genai-b3/
 ├── README.md
-└── day1/              # Day 1 session material
-    └── tasks/         # Day 1 practice tasks
-        └── demo.py
+├── pyproject.toml             # Project metadata and dependencies (managed with uv)
+├── uv.lock
+├── .env.example               # Template for local database settings
+├── day1/
+│   └── demo.py                # Day 1 session demo
+├── src/genai_b3/              # Package entry point
+└── tasks/
+    ├── 25_basic_pgms/         # 25 beginner Python exercises (1_print_msg.py … 25_triangle_type.py)
+    │   └── docs/              # Exercise sheet (PDF)
+    └── database_pgms/         # MySQL programs
+        ├── db_config.py       # Loads DB settings from .env
+        ├── basic-1.py         # Insert one employee record
+        ├── basic2-crud.py     # Employee CRUD menu
+        ├── student_management.py
+        ├── library_management.py
+        ├── product_management.py
+        ├── hospital_management.py
+        └── docs/              # Task sheet (DOCX)
 ```
 
 ## Progress Log
 
-| Day | Topic | Folder |
-|-----|-------|--------|
-| 1   | _TBD_ | [day1](day1/) |
+| # | Task | Location |
+|---|------|----------|
+| 1 | Day 1 demo | [day1](day1/) |
+| 2 | 25 basic Python programs | [tasks/25_basic_pgms](tasks/25_basic_pgms/) |
+| 3 | MySQL basics: insert and employee CRUD | [basic-1.py](tasks/database_pgms/basic-1.py), [basic2-crud.py](tasks/database_pgms/basic2-crud.py) |
+| 4 | Student Management System | [student_management.py](tasks/database_pgms/student_management.py) |
+| 5 | Library Management System: add, issue/return, update, delete books | [library_management.py](tasks/database_pgms/library_management.py) |
+| 6 | Product Inventory Management: add, re-price, restock, sell, delete products | [product_management.py](tasks/database_pgms/product_management.py) |
+| 7 | Hospital Patient Management: register, search, update diagnosis/doctor, discharge, delete patients | [hospital_management.py](tasks/database_pgms/hospital_management.py) |
 
-_Add a row after each session._
+_Add a row after each task._
 
 ## Getting Started
+
+Requires Python 3.12+ and a running MySQL server.
 
 1. Clone the repository:
    ```bash
    git clone <repo-url>
    cd genai-b3
    ```
-2. (Recommended) Create a virtual environment:
+2. Install dependencies (`mysql-connector-python`, `python-dotenv`):
+   ```bash
+   uv sync
+   ```
+   Or without uv:
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
+   pip install mysql-connector-python python-dotenv
    ```
-3. Install each day's dependencies as needed (for example, `pip install -r dayN/requirements.txt` when a day includes one).
-4. Keep API keys in a local `.env` file and never commit them.
+3. Set up database settings:
+   ```bash
+   cp .env.example .env   # then fill in DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+   ```
+   The database named in `DB_NAME` must already exist. Keep `.env` local and never commit it.
+
+## Running the Programs
+
+Basic exercises run directly:
+
+```bash
+python tasks/25_basic_pgms/7_even_or_odd.py
+```
+
+Database programs import `db_config`, so run them from their own folder:
+
+```bash
+cd tasks/database_pgms
+python hospital_management.py
+```
+
+Each management system creates its table (`student`, `book`, `product`, `patient`) on first run, then shows a numbered menu.
 
 ## Acknowledgements
 
