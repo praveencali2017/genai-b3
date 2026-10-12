@@ -30,6 +30,7 @@ genai-b3/
         ├── hospital_management.py
         ├── hotel_booking.py
         ├── restaurant_orders.py
+        ├── atm_account.py
         └── docs/              # Task sheet (DOCX)
 ```
 
@@ -46,6 +47,7 @@ genai-b3/
 | 7 | Hospital Patient Management: register, search, update diagnosis/doctor, discharge, delete patients | [hospital_management.py](tasks/database_pgms/hospital_management.py) |
 | 8 | Hotel Room Booking System: book, search, change room, check in/out, cancel, delete all bookings | [hotel_booking.py](tasks/database_pgms/hotel_booking.py) |
 | 9 | Restaurant Order Management: create, search, update quantity/bill, cancel, delete all orders | [restaurant_orders.py](tasks/database_pgms/restaurant_orders.py) |
+| 10 | ATM Account Management: create, check balance, deposit, withdraw, change PIN, search, close accounts | [atm_account.py](tasks/database_pgms/atm_account.py) |
 
 _Add a row after each task._
 
@@ -89,7 +91,7 @@ cd tasks/database_pgms
 python hospital_management.py
 ```
 
-Each management system creates its table (`student`, `book`, `product`, `patient`, `booking`, `restaurant_order`) on first run, then shows a numbered menu.
+Each management system creates its table (`student`, `book`, `product`, `patient`, `booking`, `restaurant_order`, `account`) on first run, then shows a numbered menu.
 
 ## Acknowledgements
 
