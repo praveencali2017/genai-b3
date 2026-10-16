@@ -105,7 +105,7 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 
 1. In the Vercel project settings, set **Root Directory** to `tasks/fastapi_crud_pgms/hotel_room_bs`.
 2. Use a MySQL database that Vercel can reach over the internet. `localhost` on Vercel is the serverless machine, not your computer.
-3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**. `.env` is never deployed; the app reads these environment variables instead.
+3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**, plus `DB_PORT` if the database isn't on MySQL's default port 3306. Hosted MySQL often isn't (Aiven, for example, shows its port under Connection information). `.env` is never deployed; the app reads these environment variables instead.
 
 ## Web UI
 
@@ -128,9 +128,10 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 | `schemas.py` | Pydantic models, `RoomType` and `BookingStatus`, validation rules |
 | `lifecycle.py` | Which status changes are allowed, and the message when one isn't. No I/O |
 | `repository.py` | `BookingRepository`: all SQL, including `CREATE TABLE`; `get_repository()` opens one connection per request |
-| `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` from the nearest `.env` |
+| `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and the optional `DB_PORT` (default 3306) from the nearest `.env` |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
+| `tests/test_db_config.py` | Connection-settings tests, including `DB_PORT` |
 | `pyproject.toml`, `uv.lock` | This app's dependencies and pytest config |
 
 The modules import each other by plain name (`from schemas import ...`), because this folder is the project root, locally and on Vercel.

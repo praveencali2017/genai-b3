@@ -103,7 +103,7 @@ Requires Python 3.12+ and a running MySQL server.
    ```bash
    cp .env.example .env   # then fill in DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
    ```
-   The database named in `DB_NAME` must already exist. Keep `.env` local and never commit it.
+   The database named in `DB_NAME` must already exist. `DB_PORT` is optional and defaults to 3306; the FastAPI apps read it, the CLI programs don't. Keep `.env` local and never commit it.
 
 ## Running the Programs
 

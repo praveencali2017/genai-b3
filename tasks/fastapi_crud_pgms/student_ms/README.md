@@ -86,9 +86,10 @@ curl -X DELETE 'localhost:8000/students?confirm=true'
 | `main.py` | FastAPI app, startup (creates the table), routes, serving the web UI |
 | `schemas.py` | Pydantic request and response models and their validation rules |
 | `repository.py` | `StudentRepository`: all SQL; `get_repository()` opens one connection per request |
-| `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` from the repo-root `.env` |
+| `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and the optional `DB_PORT` (default 3306) from the repo-root `.env` |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
+| `tests/test_db_config.py` | Connection-settings tests, including `DB_PORT` |
 | `pyproject.toml`, `uv.lock` | This app's dependencies and pytest config |
 
 The modules import each other by plain name (`from schemas import ...`), because this folder is the project root, locally and on Vercel.
