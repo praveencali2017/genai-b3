@@ -71,3 +71,20 @@ def test_missing_required_settings_are_still_reported(
 
     with pytest.raises(RuntimeError, match="DB_HOST"):
         db_config.load_db_config()
+
+
+def test_env_file_is_found_in_a_parent_folder(tmp_path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text("DB_HOST=x\n")
+    nested = tmp_path / "a" / "b"
+    nested.mkdir(parents=True)
+
+    assert db_config.find_env_file(nested) == env_file
+
+
+def test_missing_env_file_is_not_an_error_at_a_shallow_path(tmp_path) -> None:
+    """On Vercel the app sits at /var/task with no .env; settings come from the environment."""
+    shallow = tmp_path / "task"
+    shallow.mkdir()
+
+    assert db_config.find_env_file(shallow) is None
