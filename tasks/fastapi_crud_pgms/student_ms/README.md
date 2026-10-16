@@ -68,6 +68,14 @@ curl -X DELETE localhost:8000/students/1
 curl -X DELETE 'localhost:8000/students?confirm=true'
 ```
 
+## Deploying on Vercel
+
+This folder is its own uv project, so Vercel can build it without the rest of the repo. Vercel installs the dependencies from `pyproject.toml` and finds the `app` in `main.py` by itself, so no extra Vercel config is needed.
+
+1. In the Vercel project settings, set **Root Directory** to `tasks/fastapi_crud_pgms/student_ms`.
+2. Use a MySQL database that Vercel can reach over the internet. `localhost` on Vercel is the serverless machine, not your computer.
+3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**, plus `DB_PORT` if the database isn't on MySQL's default port 3306. Hosted MySQL often isn't (Aiven, for example, shows its port under Connection information). `.env` is never deployed; the app reads these environment variables instead.
+
 ## Web UI
 
 `static/index.html` is a single file with no build step and no outside dependencies. It calls the API from the same origin, so no CORS setup is needed.
@@ -86,7 +94,7 @@ curl -X DELETE 'localhost:8000/students?confirm=true'
 | `main.py` | FastAPI app, startup (creates the table), routes, serving the web UI |
 | `schemas.py` | Pydantic request and response models and their validation rules |
 | `repository.py` | `StudentRepository`: all SQL; `get_repository()` opens one connection per request |
-| `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and the optional `DB_PORT` (default 3306) from the repo-root `.env` |
+| `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and the optional `DB_PORT` (default 3306) from the nearest `.env` (this folder or any parent), or from environment variables |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
 | `tests/test_db_config.py` | Connection-settings tests, including `DB_PORT` |
