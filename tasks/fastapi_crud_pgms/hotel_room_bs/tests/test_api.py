@@ -11,10 +11,10 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from hotel_room_bs.lifecycle import ACTIVE_STATUSES, StatusTransition
-from hotel_room_bs.main import app
-from hotel_room_bs.repository import get_repository
-from hotel_room_bs.schemas import Booking, BookingCreate, BookingStatus, RoomUpdate
+from lifecycle import ACTIVE_STATUSES, StatusTransition
+from main import app
+from repository import get_repository
+from schemas import Booking, BookingCreate, BookingStatus, RoomUpdate
 
 
 class InMemoryBookingRepository:

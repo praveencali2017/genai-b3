@@ -1,7 +1,7 @@
 """Hotel Room Booking System as a REST API backed by MySQL.
 
-Run from tasks/fastapi_crud_pgms:
-    uv run fastapi dev hotel_room_bs/main.py
+Run from this folder (its own uv project):
+    uv run fastapi dev main.py
 Then open http://127.0.0.1:8000/ for the web UI or /docs for the API.
 """
 
@@ -13,7 +13,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
-from hotel_room_bs.lifecycle import (
+from lifecycle import (
     ACTIVE_STATUSES,
     CANCEL,
     CHECK_IN,
@@ -22,8 +22,8 @@ from hotel_room_bs.lifecycle import (
     conflict_detail,
     room_change_conflict_detail,
 )
-from hotel_room_bs.repository import BookingRepository, connect, get_repository
-from hotel_room_bs.schemas import (
+from repository import BookingRepository, connect, get_repository
+from schemas import (
     Booking,
     BookingCreate,
     BookingPage,

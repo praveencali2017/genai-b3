@@ -11,9 +11,9 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from student_ms.main import app
-from student_ms.repository import get_repository
-from student_ms.schemas import Student, StudentCreate, StudentUpdate
+from main import app
+from repository import get_repository
+from schemas import Student, StudentCreate, StudentUpdate
 
 
 class InMemoryStudentRepository:

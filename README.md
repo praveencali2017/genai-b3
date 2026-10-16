@@ -34,9 +34,10 @@ genai-b3/
     │   ├── restaurant_orders.py
     │   ├── atm_account.py
     │   └── docs/              # Task sheet (DOCX)
-    └── fastapi_crud_pgms/     # FastAPI + MySQL REST APIs
+    └── fastapi_crud_pgms/     # FastAPI + MySQL REST APIs, each its own uv project
         ├── docs/              # Task sheet (DOCX)
         ├── student_ms/        # Student Management API (see its README)
+        │   ├── pyproject.toml # App dependencies and pytest config (own uv.lock, .venv)
         │   ├── README.md      # App docs: API, validation, UI, tests
         │   ├── main.py        # App and routes
         │   ├── schemas.py     # Pydantic models
@@ -45,6 +46,7 @@ genai-b3/
         │   ├── static/index.html  # Web UI served at /
         │   └── tests/         # pytest API tests (no MySQL needed)
         └── hotel_room_bs/     # Hotel Room Booking API (see its README)
+            ├── pyproject.toml # App dependencies and pytest config (own uv.lock, .venv)
             ├── README.md      # App docs: API, booking lifecycle, UI, tests
             ├── main.py        # App and routes
             ├── schemas.py     # Pydantic models, room types, statuses
@@ -83,9 +85,13 @@ Requires Python 3.12+ and a running MySQL server.
    git clone <repo-url>
    cd genai-b3
    ```
-2. Install dependencies (`mysql-connector-python`, `python-dotenv`, `fastapi[standard]`, plus `ruff` and `pytest` for development):
+2. Install dependencies. The repo root and each FastAPI app are separate uv projects, each with its own `pyproject.toml`, `uv.lock` and `.venv`:
+   - The repo root, for the database CLI programs: `mysql-connector-python` and `python-dotenv`, plus `ruff` for development.
+   - Each app under `tasks/fastapi_crud_pgms/` (`student_ms/`, `hotel_room_bs/`): `fastapi[standard]`, `mysql-connector-python`, `pydantic` and `python-dotenv`, plus `pytest` for development. Each app is its own project so it can be deployed on its own (see [Deploying](tasks/fastapi_crud_pgms/hotel_room_bs/README.md#deploying-on-vercel)).
    ```bash
-   uv sync
+   uv sync                                                 # root project
+   (cd tasks/fastapi_crud_pgms/student_ms && uv sync)      # Student Management
+   (cd tasks/fastapi_crud_pgms/hotel_room_bs && uv sync)   # Hotel Room Booking
    ```
    Or without uv:
    ```bash
@@ -116,22 +122,22 @@ python hospital_management.py
 
 Each management system creates its table (`student`, `book`, `product`, `patient`, `booking`, `restaurant_order`, `account`) on first run, then shows a numbered menu.
 
-FastAPI apps run from `tasks/fastapi_crud_pgms` with the dev server:
+Each FastAPI app runs from its own folder, using that folder's `.venv`:
 
 ```bash
-cd tasks/fastapi_crud_pgms
-uv run fastapi dev student_ms/main.py      # Student Management
-uv run fastapi dev hotel_room_bs/main.py   # Hotel Room Booking
+cd tasks/fastapi_crud_pgms/hotel_room_bs   # or student_ms
+uv run fastapi dev main.py
 ```
 
 Then open http://127.0.0.1:8000/ for the web UI or http://127.0.0.1:8000/docs for the API. Each app's README ([Student Management](tasks/fastapi_crud_pgms/student_ms/README.md), [Hotel Room Booking](tasks/fastapi_crud_pgms/hotel_room_bs/README.md)) covers its endpoints, validation rules, pagination, the web UI and the code layout.
 
 ## Testing
 
-The FastAPI tests swap MySQL for an in-memory repository, so they run without a database:
+The FastAPI tests swap MySQL for an in-memory repository, so they run without a database. Each app runs its own tests from its folder:
 
 ```bash
-uv run pytest
+(cd tasks/fastapi_crud_pgms/student_ms && uv run pytest)
+(cd tasks/fastapi_crud_pgms/hotel_room_bs && uv run pytest)
 ```
 
 ## Linting
