@@ -9,6 +9,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.143.2",
     "mysql-connector-python>=26.7.0",
+    "openai>=3.31.0",
     "pydantic>=2.14.1",
     "python-dotenv>=1.2.4",
 ]
