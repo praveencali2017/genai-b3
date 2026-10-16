@@ -8,7 +8,7 @@ Pure logic with no I/O, so the API and its tests share one definition.
 
 from dataclasses import dataclass
 
-from hotel_room_bs.schemas import BookingStatus
+from schemas import BookingStatus
 
 # Bookings that still occupy a room, and so may be moved to another one.
 # Checked Out and Cancelled bookings are kept unchanged as history.

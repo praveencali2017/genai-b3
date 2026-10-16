@@ -8,9 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.143.2",
     "mysql-connector-python>=26.7.0",
-    "pydantic>=2.14.1",
     "python-dotenv>=1.2.4",
 ]
 
@@ -23,17 +21,12 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
     "ruff==0.17.0",
 ]
 
 [tool.ruff]
-# Task scripts import sibling modules (e.g. db_config) directly. Treating every
-# folder under tasks/ as a source root lets isort classify those imports as
+# Task scripts and FastAPI apps import sibling modules (e.g. db_config,
+# schemas) directly. Treating every task folder, and every app folder under
+# fastapi_crud_pgms/, as a source root lets isort classify those imports as
 # first-party, including folders added later.
-src = ["src", "tasks/*"]
-
-[tool.pytest.ini_options]
-# FastAPI task packages (e.g. student_ms) import themselves by absolute name.
-pythonpath = ["tasks/fastapi_crud_pgms"]
-testpaths = ["tasks/fastapi_crud_pgms"]
+src = ["src", "tasks/*", "tasks/fastapi_crud_pgms/*"]

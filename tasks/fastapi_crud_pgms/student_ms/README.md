@@ -6,11 +6,12 @@ Each student has an **id**, **name**, **age**, **course** and **marks**. You can
 
 ## Running
 
-Complete the setup in the [main README](../../../README.md#getting-started) first: run `uv sync`, then copy `.env.example` to `.env` and fill in your MySQL settings. Then start the server:
+Complete the setup in the [main README](../../../README.md#getting-started) first: copy `.env.example` to `.env` and fill in your MySQL settings. This app is its own uv project, with its own `pyproject.toml`, `uv.lock` and `.venv`. Install its dependencies and start the server from this folder:
 
 ```bash
-cd tasks/fastapi_crud_pgms
-uv run fastapi dev student_ms/main.py
+cd tasks/fastapi_crud_pgms/student_ms
+uv sync
+uv run fastapi dev main.py
 ```
 
 | URL | What's there |
@@ -88,14 +89,18 @@ curl -X DELETE 'localhost:8000/students?confirm=true'
 | `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` from the repo-root `.env` |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
+| `pyproject.toml`, `uv.lock` | This app's dependencies and pytest config |
+
+The modules import each other by plain name (`from schemas import ...`), because this folder is the project root, locally and on Vercel.
 
 Each request gets its own MySQL connection, because mysql-connector connections aren't thread-safe and FastAPI runs these routes in a thread pool.
 
 ## Tests
 
-The tests replace MySQL with an in-memory repository through FastAPI dependency overrides, so they need no database. Run them from the repo root:
+The tests replace MySQL with an in-memory repository through FastAPI dependency overrides, so they need no database. Run them from this folder:
 
 ```bash
+cd tasks/fastapi_crud_pgms/student_ms
 uv run pytest
 ```
 

@@ -6,9 +6,9 @@ from enum import StrEnum
 import mysql.connector
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
-from hotel_room_bs.db_config import load_db_config
-from hotel_room_bs.lifecycle import ACTIVE_STATUSES, StatusTransition
-from hotel_room_bs.schemas import (
+from db_config import load_db_config
+from lifecycle import ACTIVE_STATUSES, StatusTransition
+from schemas import (
     Booking,
     BookingCreate,
     BookingStatus,

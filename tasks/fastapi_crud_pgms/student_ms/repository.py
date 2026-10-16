@@ -5,8 +5,8 @@ from collections.abc import Iterator
 import mysql.connector
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
-from student_ms.db_config import load_db_config
-from student_ms.schemas import Student, StudentCreate, StudentUpdate
+from db_config import load_db_config
+from schemas import Student, StudentCreate, StudentUpdate
 
 # Same table as tasks/database_pgms/student_management.py, so both programs
 # share the data.

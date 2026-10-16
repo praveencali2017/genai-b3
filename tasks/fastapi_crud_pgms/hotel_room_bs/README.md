@@ -6,11 +6,12 @@ Each booking has an **id**, **customer name**, **room number**, **room type**, *
 
 ## Running
 
-Complete the setup in the [main README](../../../README.md#getting-started) first: run `uv sync`, then copy `.env.example` to `.env` and fill in your MySQL settings. Then start the server:
+Complete the setup in the [main README](../../../README.md#getting-started) first: copy `.env.example` to `.env` and fill in your MySQL settings. This app is its own uv project, with its own `pyproject.toml`, `uv.lock` and `.venv`. Install its dependencies and start the server from this folder:
 
 ```bash
-cd tasks/fastapi_crud_pgms
-uv run fastapi dev hotel_room_bs/main.py
+cd tasks/fastapi_crud_pgms/hotel_room_bs
+uv sync
+uv run fastapi dev main.py
 ```
 
 | URL | What's there |
@@ -98,6 +99,14 @@ curl -X POST localhost:8000/bookings/2/cancel
 curl -X DELETE 'localhost:8000/bookings?confirm=true'
 ```
 
+## Deploying on Vercel
+
+This folder is its own uv project, so Vercel can build it without the rest of the repo. Vercel installs the dependencies from `pyproject.toml` and finds the `app` in `main.py` by itself, so no extra Vercel config is needed.
+
+1. In the Vercel project settings, set **Root Directory** to `tasks/fastapi_crud_pgms/hotel_room_bs`.
+2. Use a MySQL database that Vercel can reach over the internet. `localhost` on Vercel is the serverless machine, not your computer.
+3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**. `.env` is never deployed; the app reads these environment variables instead.
+
 ## Web UI
 
 `static/index.html` is a single file with no build step and no outside dependencies. It calls the API from the same origin, so no CORS setup is needed.
@@ -122,6 +131,9 @@ curl -X DELETE 'localhost:8000/bookings?confirm=true'
 | `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` from the nearest `.env` |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
+| `pyproject.toml`, `uv.lock` | This app's dependencies and pytest config |
+
+The modules import each other by plain name (`from schemas import ...`), because this folder is the project root, locally and on Vercel.
 
 The table's `ENUM` values are generated from `RoomType` and `BookingStatus`, so the database and the API always accept the same values.
 
@@ -129,9 +141,10 @@ Each request gets its own MySQL connection, because mysql-connector connections 
 
 ## Tests
 
-The tests replace MySQL with an in-memory repository through FastAPI dependency overrides, so they need no database. Run them from the repo root:
+The tests replace MySQL with an in-memory repository through FastAPI dependency overrides, so they need no database. Run them from this folder:
 
 ```bash
+cd tasks/fastapi_crud_pgms/hotel_room_bs
 uv run pytest
 ```
 

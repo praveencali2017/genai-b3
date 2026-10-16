@@ -1,7 +1,7 @@
 """Student Management System as a REST API backed by MySQL.
 
-Run from tasks/fastapi_crud_pgms:
-    uv run fastapi dev student_ms/main.py
+Run from this folder (its own uv project):
+    uv run fastapi dev main.py
 Then open http://127.0.0.1:8000/ for the web UI or /docs for the API.
 """
 
@@ -13,8 +13,8 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
 
-from student_ms.repository import StudentRepository, connect, get_repository
-from student_ms.schemas import (
+from repository import StudentRepository, connect, get_repository
+from schemas import (
     DeleteAllResult,
     Student,
     StudentCreate,

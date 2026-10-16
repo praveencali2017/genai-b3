@@ -1,0 +1,29 @@
+[project]
+name = "hotel-room-bs"
+version = "0.1.0"
+description = "Hotel Room Booking System: FastAPI + MySQL REST API with a web UI"
+authors = [
+    { name = "Praveen", email = "praveenknjun12@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.143.2",
+    "mysql-connector-python>=26.7.0",
+    "pydantic>=2.14.1",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.uv]
+# An app, not a library: install the dependencies only, never build this
+# folder as a package.
+package = false
+
+[tool.pytest.ini_options]
+# The app's modules (main, schemas, repository, ...) import each other as
+# top-level modules, so this folder must be on the import path.
+pythonpath = ["."]
