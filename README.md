@@ -36,11 +36,20 @@ genai-b3/
     │   └── docs/              # Task sheet (DOCX)
     └── fastapi_crud_pgms/     # FastAPI + MySQL REST APIs
         ├── docs/              # Task sheet (DOCX)
-        └── student_ms/        # Student Management API (see its README)
-            ├── README.md      # App docs: API, validation, UI, tests
+        ├── student_ms/        # Student Management API (see its README)
+        │   ├── README.md      # App docs: API, validation, UI, tests
+        │   ├── main.py        # App and routes
+        │   ├── schemas.py     # Pydantic models
+        │   ├── repository.py  # MySQL queries
+        │   ├── db_config.py   # Loads DB settings from .env
+        │   ├── static/index.html  # Web UI served at /
+        │   └── tests/         # pytest API tests (no MySQL needed)
+        └── hotel_room_bs/     # Hotel Room Booking API (see its README)
+            ├── README.md      # App docs: API, booking lifecycle, UI, tests
             ├── main.py        # App and routes
-            ├── schemas.py     # Pydantic models
-            ├── repository.py  # MySQL queries
+            ├── schemas.py     # Pydantic models, room types, statuses
+            ├── lifecycle.py   # Allowed status changes (check in/out, cancel)
+            ├── repository.py  # MySQL queries; creates its own table
             ├── db_config.py   # Loads DB settings from .env
             ├── static/index.html  # Web UI served at /
             └── tests/         # pytest API tests (no MySQL needed)
@@ -61,6 +70,7 @@ genai-b3/
 | 9 | Restaurant Order Management: create, search, update quantity/bill, cancel, delete all orders | [restaurant_orders.py](tasks/database_pgms/restaurant_orders.py) |
 | 10 | ATM Account Management: create, check balance, deposit, withdraw, change PIN, search, close accounts | [atm_account.py](tasks/database_pgms/atm_account.py) |
 | 11 | FastAPI Student Management API + web UI: add, list (paginated), get, update marks/course, delete, delete all | [student_ms](tasks/fastapi_crud_pgms/student_ms/) ([README](tasks/fastapi_crud_pgms/student_ms/README.md)) |
+| 12 | FastAPI Hotel Room Booking API + web UI: create, list (paginated), get, update room, check in, check out, cancel, delete all | [hotel_room_bs](tasks/fastapi_crud_pgms/hotel_room_bs/) ([README](tasks/fastapi_crud_pgms/hotel_room_bs/README.md)) |
 
 _Add a row after each task._
 
@@ -110,10 +120,11 @@ FastAPI apps run from `tasks/fastapi_crud_pgms` with the dev server:
 
 ```bash
 cd tasks/fastapi_crud_pgms
-uv run fastapi dev student_ms/main.py
+uv run fastapi dev student_ms/main.py      # Student Management
+uv run fastapi dev hotel_room_bs/main.py   # Hotel Room Booking
 ```
 
-Then open http://127.0.0.1:8000/ for the web UI or http://127.0.0.1:8000/docs for the API. The [Student Management README](tasks/fastapi_crud_pgms/student_ms/README.md) covers the endpoints, validation rules, pagination, the web UI and the code layout.
+Then open http://127.0.0.1:8000/ for the web UI or http://127.0.0.1:8000/docs for the API. Each app's README ([Student Management](tasks/fastapi_crud_pgms/student_ms/README.md), [Hotel Room Booking](tasks/fastapi_crud_pgms/hotel_room_bs/README.md)) covers its endpoints, validation rules, pagination, the web UI and the code layout.
 
 ## Testing
 
