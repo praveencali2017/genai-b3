@@ -50,6 +50,7 @@ Each change checks the current status inside the same `UPDATE` statement (`... W
 | `POST` | `/bookings/{id}/check-out` | `200` with the updated booking | `404`, `409` |
 | `POST` | `/bookings/{id}/cancel` | `200` with the updated booking | `404`, `409` |
 | `DELETE` | `/bookings?confirm=true` | `200` with `{"deleted": n}` | `400` without `confirm=true` |
+| `POST` | `/chat` | `200` with `{"reply": "..."}` | `422` empty or over 2000 characters, `502` OpenAI failed, `503` no `OPENAI_API_KEY` |
 
 There's no endpoint for deleting one booking. Cancel it instead, which keeps the record.
 
@@ -84,6 +85,12 @@ The table enforces the same rules (`ENUM` columns and `CHECK` constraints), so t
 
 `limit` can be from 1 to 100, and `offset` must be 0 or more. To get the next page, add `limit` to `offset`. If `offset + limit` is equal to or greater than `total`, this is the last page.
 
+### Chat assistant
+
+`POST /chat` takes `{"message": "..."}` and answers it with the OpenAI Responses API, in a few plain sentences. Each message is answered on its own; no conversation history is kept.
+
+Set `OPENAI_API_KEY` in `.env` to turn it on. `OPENAI_MODEL` is optional and defaults to `gpt-5.4-mini`. The key is optional for the rest of the app: without it the booking API still works, and only `/chat` returns `503` saying the key isn't set.
+
 ### Examples
 
 ```bash
@@ -97,6 +104,7 @@ curl -X POST localhost:8000/bookings/1/check-in
 curl -X POST localhost:8000/bookings/1/check-out
 curl -X POST localhost:8000/bookings/2/cancel
 curl -X DELETE 'localhost:8000/bookings?confirm=true'
+curl -X POST localhost:8000/chat -H 'content-type: application/json' -d '{"message": "What is a Deluxe room?"}'
 ```
 
 ## Deploying on Vercel
@@ -105,7 +113,7 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 
 1. In the Vercel project settings, set **Root Directory** to `tasks/fastapi_crud_pgms/hotel_room_bs`.
 2. Use a MySQL database that Vercel can reach over the internet. `localhost` on Vercel is the serverless machine, not your computer.
-3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**, plus `DB_PORT` if the database isn't on MySQL's default port 3306. Hosted MySQL often isn't (Aiven, for example, shows its port under Connection information). `.env` is never deployed; the app reads these environment variables instead.
+3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**, plus `DB_PORT` if the database isn't on MySQL's default port 3306, and `OPENAI_API_KEY` for the chat assistant. Hosted MySQL often isn't (Aiven, for example, shows its port under Connection information). `.env` is never deployed; the app reads these environment variables instead.
 
 ## Web UI
 
@@ -118,6 +126,7 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 - Change room dialog; cancel asks for confirmation; delete all requires typing `DELETE`
 - If a booking changed since the page loaded, the `409` reason is shown and the row refreshes
 - Loading, empty and error screens, with a Retry button on the error screen
+- Chat assistant button in the bottom-right corner that answers questions through `/chat`
 - Light and dark themes that follow your system setting; the layout works on phones
 
 ## Code layout
@@ -128,9 +137,11 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 | `schemas.py` | Pydantic models, `RoomType` and `BookingStatus`, validation rules |
 | `lifecycle.py` | Which status changes are allowed, and the message when one isn't. No I/O |
 | `repository.py` | `BookingRepository`: all SQL, including `CREATE TABLE`; `get_repository()` opens one connection per request |
+| `chat.py` | `ChatService`: all OpenAI calls; reads `OPENAI_API_KEY` and `OPENAI_MODEL` |
 | `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and the optional `DB_PORT` (default 3306) from the nearest `.env` |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
+| `tests/test_chat.py` | Chat endpoint and settings tests, with a fake OpenAI client |
 | `tests/test_db_config.py` | Connection-settings tests, including `DB_PORT` |
 | `pyproject.toml`, `uv.lock` | This app's dependencies and pytest config |
 
@@ -142,11 +153,11 @@ Each request gets its own MySQL connection, because mysql-connector connections 
 
 ## Tests
 
-The tests replace MySQL with an in-memory repository through FastAPI dependency overrides, so they need no database. Run them from this folder:
+The tests replace MySQL with an in-memory repository and OpenAI with a fake client through FastAPI dependency overrides, so they need no database, API key or network. Run them from this folder:
 
 ```bash
 cd tasks/fastapi_crud_pgms/hotel_room_bs
 uv run pytest
 ```
 
-They cover creating and reading bookings, validation errors, pagination limits, changing rooms (including on finished bookings), every allowed and disallowed status change, 404s, the delete-all confirmation, and serving the web UI.
+They cover creating and reading bookings, validation errors, pagination limits, changing rooms (including on finished bookings), every allowed and disallowed status change, 404s, the delete-all confirmation, serving the web UI, and the chat endpoint's answers and errors.

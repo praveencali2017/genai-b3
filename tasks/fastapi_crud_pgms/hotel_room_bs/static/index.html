@@ -331,7 +331,7 @@
     .toasts {
       position: fixed;
       right: 16px;
-      bottom: 16px;
+      bottom: 88px;
       z-index: 10;
       display: grid;
       gap: 8px;
@@ -351,6 +351,69 @@
     }
     .toast.error { background: var(--danger); color: var(--on-danger); }
     @keyframes slide-in { from { opacity: 0; transform: translateY(10px); } }
+
+    /* ---------- Chat ---------- */
+    .chat-launcher {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 20;
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      color: #fff;
+      box-shadow: 0 8px 24px rgb(79 70 229 / 0.35);
+    }
+    .chat-launcher svg { width: 24px; height: 24px; }
+    .chat-panel {
+      position: fixed;
+      right: 16px;
+      bottom: 84px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      width: min(360px, calc(100vw - 32px));
+      height: min(480px, calc(100dvh - 116px));
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 24px 60px rgb(0 0 0 / 0.2);
+      overflow: hidden;
+      animation: pop 0.16s ease-out;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .chat-header p { margin: 0; color: var(--muted); font-size: 0.78rem; }
+    .chat-log {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--surface-2);
+    }
+    .chat-msg {
+      max-width: 85%;
+      padding: 9px 13px;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .chat-msg.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .chat-msg.user { align-self: flex-end; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 4px; }
+    .chat-msg.error { align-self: flex-start; background: var(--danger-soft); color: var(--danger); }
+    .chat-msg.pending { color: var(--muted); font-style: italic; }
+    .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+    .chat-form button { padding: 10px 12px; }
 
     .visually-hidden {
       position: absolute;
@@ -379,6 +442,8 @@
     <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
     <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 17h.01"/></symbol>
+    <symbol id="icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/></symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></symbol>
     <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   </svg>
 
@@ -547,6 +612,33 @@
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
+  <!-- Chat assistant -->
+  <section class="chat-panel" id="chat-panel" aria-labelledby="chat-title" hidden>
+    <header class="chat-header">
+      <div>
+        <h2 id="chat-title">Assistant</h2>
+        <p>Ask anything; answers are kept short.</p>
+      </div>
+      <button type="button" class="icon-btn" id="chat-close" aria-label="Close chat">
+        <svg aria-hidden="true"><use href="#icon-x"/></svg>
+      </button>
+    </header>
+    <div class="chat-log" id="chat-log" role="log" aria-live="polite">
+      <div class="chat-msg bot">Hi! Ask me a question and I'll give you a simple answer.</div>
+    </div>
+    <form class="chat-form" id="chat-form">
+      <label for="chat-input" class="visually-hidden">Message</label>
+      <input id="chat-input" maxlength="2000" autocomplete="off" placeholder="Type your question…" required>
+      <button type="submit" class="btn-primary" aria-label="Send message">
+        <svg aria-hidden="true"><use href="#icon-send"/></svg>
+      </button>
+    </form>
+  </section>
+  <button type="button" class="chat-launcher" id="chat-open" aria-label="Open chat assistant"
+          aria-controls="chat-panel" aria-expanded="false">
+    <svg aria-hidden="true"><use href="#icon-chat"/></svg>
+  </button>
+
   <script type="module">
     // ---------- Domain constants (mirror schemas.py / lifecycle.py) ----------
 
@@ -604,7 +696,9 @@
         : fieldErrors._form ?? "Please fix the highlighted fields.";
       throw new ApiError(
         response.status,
-        response.status >= 500 ? "Server error. Check that MySQL is running." : message,
+        response.status >= 500 && typeof detail !== "string"
+          ? "Server error. Check that MySQL is running."
+          : message,
         fieldErrors,
       );
     }
@@ -620,6 +714,7 @@
       checkOut: (id) => post(`/bookings/${id}/check-out`),
       cancel: (id) => post(`/bookings/${id}/cancel`),
       removeAll: () => request("/bookings?confirm=true", { method: "DELETE" }),
+      chat: (message) => request("/chat", { method: "POST", body: JSON.stringify({ message }) }),
     };
 
     // ---------- State ----------
@@ -1122,6 +1217,61 @@
       state.limit = Number(event.target.value);
       state.offset = 0;
       loadPage();
+    });
+
+    // ---------- Chat ----------
+
+    const chatPanel = $("#chat-panel");
+    const chatLauncher = $("#chat-open");
+    const chatLog = $("#chat-log");
+    const chatInput = $("#chat-input");
+    const chatSubmit = $("#chat-form button[type=submit]");
+
+    function setChatOpen(isOpen) {
+      chatPanel.hidden = !isOpen;
+      chatLauncher.setAttribute("aria-expanded", String(isOpen));
+      chatLauncher.setAttribute("aria-label", isOpen ? "Close chat assistant" : "Open chat assistant");
+      if (isOpen) chatInput.focus();
+      else chatLauncher.focus();
+    }
+
+    function addChatMessage(text, kind) {
+      const node = el("div", { class: `chat-msg ${kind}`, text });
+      chatLog.append(node);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return node;
+    }
+
+    chatLauncher.addEventListener("click", () => setChatOpen(chatPanel.hidden));
+    $("#chat-close").addEventListener("click", () => setChatOpen(false));
+    chatPanel.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setChatOpen(false);
+    });
+
+    $("#chat-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = chatInput.value.trim();
+      if (!message || chatSubmit.disabled) return;
+
+      addChatMessage(message, "user");
+      chatInput.value = "";
+      chatSubmit.disabled = true;
+      // One bubble shows "Thinking…" and then becomes the answer or the error.
+      const bubble = addChatMessage("Thinking…", "bot pending");
+      const settle = (text, kind) => {
+        bubble.className = `chat-msg ${kind}`;
+        bubble.textContent = text;
+        chatLog.scrollTop = chatLog.scrollHeight;
+      };
+      try {
+        const { reply } = await api.chat(message);
+        settle(reply, "bot");
+      } catch (error) {
+        settle(error.message, "error");
+      } finally {
+        chatSubmit.disabled = false;
+        chatInput.focus();
+      }
     });
 
     loadPage();
