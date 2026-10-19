@@ -69,3 +69,19 @@ class BookingPage(BaseModel):
 
 class DeleteAllResult(BaseModel):
     deleted: int
+
+
+# Keeps one prompt well inside a small model's context and the user's budget.
+MAX_CHAT_MESSAGE_LENGTH = 2000
+
+
+class ChatRequest(BaseModel):
+    """One prompt from the chat widget."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    message: Annotated[str, Field(min_length=1, max_length=MAX_CHAT_MESSAGE_LENGTH)]
+
+
+class ChatReply(BaseModel):
+    reply: str

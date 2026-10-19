@@ -10,9 +10,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.responses import FileResponse, JSONResponse
 
+from chat import (
+    ChatNotConfiguredError,
+    ChatService,
+    ChatUnavailableError,
+    get_chat_service,
+)
 from lifecycle import (
     ACTIVE_STATUSES,
     CANCEL,
@@ -27,6 +33,8 @@ from schemas import (
     Booking,
     BookingCreate,
     BookingPage,
+    ChatReply,
+    ChatRequest,
     DeleteAllResult,
     RoomUpdate,
 )
@@ -52,6 +60,19 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 app = FastAPI(title="Hotel Room Booking System", lifespan=lifespan)
 
 Repository = Annotated[BookingRepository, Depends(get_repository)]
+Chat = Annotated[ChatService, Depends(get_chat_service)]
+
+
+@app.exception_handler(ChatNotConfiguredError)
+def chat_not_configured(_request: Request, error: ChatNotConfiguredError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(error)}
+    )
+
+
+@app.exception_handler(ChatUnavailableError)
+def chat_unavailable(_request: Request, error: ChatUnavailableError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_502_BAD_GATEWAY, content={"detail": str(error)})
 
 
 def _not_found(booking_id: int) -> HTTPException:
@@ -152,3 +173,9 @@ def delete_all_bookings(
             detail="Deleting all bookings requires ?confirm=true.",
         )
     return DeleteAllResult(deleted=repository.delete_all())
+
+
+@app.post("/chat")
+def chat(prompt: ChatRequest, assistant: Chat) -> ChatReply:
+    """Answer one prompt from the web UI's chat widget with a short reply."""
+    return ChatReply(reply=assistant.answer(prompt.message))
