@@ -414,6 +414,7 @@
     .chat-msg.pending { color: var(--muted); font-style: italic; }
     .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
     .chat-form button { padding: 10px 12px; }
+    .chat-model { margin: 0; padding: 0 12px 10px; color: var(--muted); font-size: 0.78rem; }
 
     .visually-hidden {
       position: absolute;
@@ -628,6 +629,7 @@
         <svg aria-hidden="true"><use href="#icon-send"/></svg>
       </button>
     </form>
+    <p class="chat-model" id="chat-model" hidden></p>
   </section>
   <button type="button" class="chat-launcher" id="chat-open" aria-label="Open chat assistant"
           aria-controls="chat-panel" aria-expanded="false">
@@ -1156,6 +1158,7 @@
     const chatLog = $("#chat-log");
     const chatInput = $("#chat-input");
     const chatSubmit = $("#chat-form button[type=submit]");
+    const chatModel = $("#chat-model");
 
     function setChatOpen(isOpen) {
       chatPanel.hidden = !isOpen;
@@ -1194,8 +1197,10 @@
         chatLog.scrollTop = chatLog.scrollHeight;
       };
       try {
-        const { reply } = await api.chat(message);
+        const { reply, model } = await api.chat(message);
         settle(reply, "bot");
+        chatModel.textContent = `Model: ${model}`;
+        chatModel.hidden = false;
       } catch (error) {
         settle(error.message, "error");
       } finally {

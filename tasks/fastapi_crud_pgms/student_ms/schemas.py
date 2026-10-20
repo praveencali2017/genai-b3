@@ -70,3 +70,5 @@ class ChatRequest(BaseModel):
 
 class ChatReply(BaseModel):
     reply: str
+    # The model that produced the reply, e.g. "llama3.2" or "gpt-5.4-mini".
+    model: str

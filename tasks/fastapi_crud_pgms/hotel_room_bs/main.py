@@ -178,4 +178,5 @@ def delete_all_bookings(
 @app.post("/chat")
 def chat(prompt: ChatRequest, assistant: Chat) -> ChatReply:
     """Answer one prompt from the web UI's chat widget with a short reply."""
-    return ChatReply(reply=assistant.answer(prompt.message))
+    answer = assistant.answer(prompt.message)
+    return ChatReply(reply=answer.text, model=answer.model)
