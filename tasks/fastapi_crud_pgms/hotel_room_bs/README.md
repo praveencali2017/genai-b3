@@ -50,7 +50,7 @@ Each change checks the current status inside the same `UPDATE` statement (`... W
 | `POST` | `/bookings/{id}/check-out` | `200` with the updated booking | `404`, `409` |
 | `POST` | `/bookings/{id}/cancel` | `200` with the updated booking | `404`, `409` |
 | `DELETE` | `/bookings?confirm=true` | `200` with `{"deleted": n}` | `400` without `confirm=true` |
-| `POST` | `/chat` | `200` with `{"reply": "..."}` | `422` empty or over 2000 characters, `502` OpenAI failed, `503` no `OPENAI_API_KEY` |
+| `POST` | `/chat` | `200` with `{"reply": "...", "model": "..."}` | `422` empty or over 2000 characters, `502` the model failed or is unreachable, `503` no `OPENAI_API_KEY` (OpenAI mode) or an invalid `OLLAMA_ENABLED` |
 
 There's no endpoint for deleting one booking. Cancel it instead, which keeps the record.
 
@@ -87,9 +87,14 @@ The table enforces the same rules (`ENUM` columns and `CHECK` constraints), so t
 
 ### Chat assistant
 
-`POST /chat` takes `{"message": "..."}` and answers it with the OpenAI Responses API, in a few plain sentences. Each message is answered on its own; no conversation history is kept.
+`POST /chat` takes `{"message": "..."}` and answers it in a few plain sentences, as `{"reply": "...", "model": "llama3.2"}`. `model` is the model that answered; the web UI shows it under the chat box. Each message is answered on its own; no conversation history is kept.
 
-Set `OPENAI_API_KEY` in `.env` to turn it on. `OPENAI_MODEL` is optional and defaults to `gpt-5.4-mini`. The key is optional for the rest of the app: without it the booking API still works, and only `/chat` returns `503` saying the key isn't set.
+The provider is chosen from `.env` on every request:
+
+- **Ollama** (local): `OLLAMA_ENABLED=true`. Uses Ollama's OpenAI-compatible Chat Completions API at `OLLAMA_BASE_URL` (default `http://localhost:11434/v1`) with `OLLAMA_MODEL` (default `llama3.2`). No API key is needed; run `ollama pull llama3.2` and keep Ollama running.
+- **OpenAI**: `OLLAMA_ENABLED=false` or unset. Uses the Responses API with `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-5.4-mini`). Without a key the booking API still works, and only `/chat` returns `503` saying the key isn't set.
+
+Both providers sit behind the same `ChatModel` interface (`chat_models.py`), so the chat logic, request and response are identical; only the adapter changes.
 
 ### Examples
 
@@ -113,7 +118,7 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 
 1. In the Vercel project settings, set **Root Directory** to `tasks/fastapi_crud_pgms/hotel_room_bs`.
 2. Use a MySQL database that Vercel can reach over the internet. `localhost` on Vercel is the serverless machine, not your computer.
-3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**, plus `DB_PORT` if the database isn't on MySQL's default port 3306, and `OPENAI_API_KEY` for the chat assistant. Hosted MySQL often isn't (Aiven, for example, shows its port under Connection information). `.env` is never deployed; the app reads these environment variables instead.
+3. Add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` under **Settings → Environment Variables**, plus `DB_PORT` if the database isn't on MySQL's default port 3306, and `OPENAI_API_KEY` for the chat assistant (leave `OLLAMA_ENABLED` unset there: Vercel can't reach the Ollama on your computer). Hosted MySQL often isn't (Aiven, for example, shows its port under Connection information). `.env` is never deployed; the app reads these environment variables instead.
 
 ## Web UI
 
@@ -137,11 +142,12 @@ This folder is its own uv project, so Vercel can build it without the rest of th
 | `schemas.py` | Pydantic models, `RoomType` and `BookingStatus`, validation rules |
 | `lifecycle.py` | Which status changes are allowed, and the message when one isn't. No I/O |
 | `repository.py` | `BookingRepository`: all SQL, including `CREATE TABLE`; `get_repository()` opens one connection per request |
-| `chat.py` | `ChatService`: all OpenAI calls; reads `OPENAI_API_KEY` and `OPENAI_MODEL` |
+| `chat.py` | `ChatService` (the chat logic); reads `OLLAMA_*` / `OPENAI_*` settings and picks the matching model adapter |
+| `chat_models.py` | `ChatModel` interface and its adapters: `OpenAIResponsesModel` and `OllamaChatModel`; the only code that knows each provider's API shape |
 | `db_config.py` | Loads `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and the optional `DB_PORT` (default 3306) from the nearest `.env` |
 | `static/index.html` | Web UI |
 | `tests/test_api.py` | API tests |
-| `tests/test_chat.py` | Chat endpoint and settings tests, with a fake OpenAI client |
+| `tests/test_chat.py` | Chat endpoint, adapter and provider-selection tests, with fake models and clients |
 | `tests/test_db_config.py` | Connection-settings tests, including `DB_PORT` |
 | `pyproject.toml`, `uv.lock` | This app's dependencies and pytest config |
 
@@ -153,7 +159,7 @@ Each request gets its own MySQL connection, because mysql-connector connections 
 
 ## Tests
 
-The tests replace MySQL with an in-memory repository and OpenAI with a fake client through FastAPI dependency overrides, so they need no database, API key or network. Run them from this folder:
+The tests replace MySQL with an in-memory repository and OpenAI with a fake client through FastAPI dependency overrides, so they need no database, API key, Ollama or network. Run them from this folder:
 
 ```bash
 cd tasks/fastapi_crud_pgms/hotel_room_bs
