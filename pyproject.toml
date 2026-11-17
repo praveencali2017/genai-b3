@@ -30,3 +30,8 @@ dev = [
 # fastapi_crud_pgms/, as a source root lets isort classify those imports as
 # first-party, including folders added later.
 src = ["src", "tasks/*", "tasks/fastapi_crud_pgms/*"]
+
+[tool.uv.workspace]
+members = [
+    "tasks/crud_tool_calling_pgms/employee_management",
+]
