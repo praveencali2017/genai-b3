@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Employee Management</title>
+  <style>
+    :root { --bg:#f5f6f8; --card:#fff; --text:#1f2328; --muted:#656d76; --border:#d0d7de;
+            --accent:#2563eb; --danger:#dc2626; --user:#dbeafe; --bot:#f3f4f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:15px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:16px 24px; background:var(--card); border-bottom:1px solid var(--border); }
+    h1 { margin:0; font-size:20px; }
+    h2 { margin:0 0 12px; font-size:16px; }
+    main { display:grid; grid-template-columns: minmax(0,2fr) minmax(320px,1fr); gap:16px; padding:16px 24px; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; padding:16px; } }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; }
+    .stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
+    form.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; }
+    label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
+    input { font:inherit; padding:7px 9px; border:1px solid var(--border); border-radius:6px; color:var(--text); }
+    .actions { grid-column:1/-1; display:flex; gap:8px; }
+    button { font:inherit; padding:7px 14px; border-radius:6px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+    button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    button.danger { color:var(--danger); }
+    button:disabled { opacity:.6; cursor:default; }
+    .toolbar { display:flex; justify-content:space-between; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    th { font-size:13px; color:var(--muted); font-weight:600; }
+    td.row-actions { display:flex; gap:6px; }
+    .empty { color:var(--muted); text-align:center; padding:20px; }
+    .status { min-height:20px; font-size:13px; margin-top:8px; }
+    .status.error { color:var(--danger); }
+    .chat { display:flex; flex-direction:column; height:calc(100vh - 110px); min-height:420px; }
+    #chat-log { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:4px 0; }
+    .msg { padding:8px 12px; border-radius:10px; max-width:90%; white-space:pre-wrap; }
+    .msg.user { align-self:flex-end; background:var(--user); }
+    .msg.assistant { align-self:flex-start; background:var(--bot); }
+    .msg.error { align-self:flex-start; background:#fee2e2; color:var(--danger); }
+    #chat-form { display:flex; gap:8px; margin-top:8px; }
+    #chat-form input { flex:1; }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+    .hint { font-size:13px; color:var(--muted); margin:0 0 8px; }
+  </style>
+</head>
+<body>
+  <header><h1>Employee Management</h1></header>
+
+  <main>
+    <div class="stack">
+      <section class="card" aria-labelledby="form-title">
+        <h2 id="form-title">Add employee</h2>
+        <form id="employee-form" class="grid">
+          <input type="hidden" name="id">
+          <label>Name <input name="name" required maxlength="100"></label>
+          <label>Email <input name="email" type="email" required></label>
+          <label>Department <input name="department" required maxlength="100"></label>
+          <label>Position <input name="position" required maxlength="100"></label>
+          <label>Salary <input name="salary" type="number" min="0" step="0.01" required></label>
+          <label>Hire date <input name="hire_date" type="date"></label>
+          <div class="actions">
+            <button type="submit" class="primary" id="submit-btn">Add</button>
+            <button type="button" id="cancel-btn" hidden>Cancel edit</button>
+          </div>
+        </form>
+        <div id="form-status" class="status" role="status"></div>
+      </section>
+
+      <section class="card" aria-labelledby="list-title">
+        <div class="toolbar">
+          <h2 id="list-title">Employees</h2>
+          <input id="search" type="search" placeholder="Search…" aria-label="Search employees">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Position</th>
+                  <th>Salary</th><th>Hire date</th><th><span class="sr-only">Actions</span></th></tr>
+            </thead>
+            <tbody id="employee-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section class="card chat" aria-labelledby="chat-title">
+      <h2 id="chat-title">Assistant</h2>
+      <p class="hint">Try: "Add Priya, priya@acme.com, Engineering, Backend Developer, 95000" ·
+        "List everyone in Engineering" · "Change Priya's salary to 100000" · "Delete employee 3"</p>
+      <div id="chat-log" aria-live="polite"></div>
+      <form id="chat-form">
+        <input id="chat-input" placeholder="Ask me to manage employees…" autocomplete="off" required aria-label="Message">
+        <button type="submit" class="primary">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const API = "/api/employees";
+    const form = document.getElementById("employee-form");
+    const rows = document.getElementById("employee-rows");
+    const formStatus = document.getElementById("form-status");
+    const searchInput = document.getElementById("search");
+    let employees = [];
+
+    async function request(url, options = {}) {
+      const response = await fetch(url, {
+        headers: { "Content-Type": "application/json" }, ...options,
+      });
+      if (response.status === 204) return null;
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(describeError(body, response.status));
+      return body;
+    }
+
+    function describeError(body, statusCode) {
+      if (typeof body.detail === "string") return body.detail;
+      if (Array.isArray(body.detail)) {
+        return body.detail.map(d => `${d.loc.at(-1)}: ${d.msg}`).join("; ");
+      }
+      return `Request failed (${statusCode})`;
+    }
+
+    function setStatus(element, message, isError = false) {
+      element.textContent = message;
+      element.classList.toggle("error", isError);
+    }
+
+    function cell(text) {
+      const td = document.createElement("td");
+      td.textContent = text ?? "";
+      return td;
+    }
+
+    function button(label, onClick, className = "") {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.className = className;
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    function renderEmployees() {
+      rows.replaceChildren();
+      if (employees.length === 0) {
+        const tr = document.createElement("tr");
+        const td = cell(searchInput.value ? "No employees match your search." : "No employees yet.");
+        td.colSpan = 8;
+        td.className = "empty";
+        tr.append(td);
+        rows.append(tr);
+        return;
+      }
+      for (const e of employees) {
+        const tr = document.createElement("tr");
+        const actions = document.createElement("td");
+        actions.className = "row-actions";
+        actions.append(
+          button("Edit", () => startEdit(e)),
+          button("Delete", () => removeEmployee(e), "danger"),
+        );
+        tr.append(cell(e.id), cell(e.name), cell(e.email), cell(e.department), cell(e.position),
+                  cell(e.salary.toLocaleString()), cell(e.hire_date), actions);
+        rows.append(tr);
+      }
+    }
+
+    async function loadEmployees() {
+      const search = searchInput.value.trim();
+      const url = search ? `${API}?search=${encodeURIComponent(search)}` : API;
+      try {
+        employees = await request(url);
+        renderEmployees();
+      } catch (error) {
+        setStatus(formStatus, error.message, true);
+      }
+    }
+
+    function readForm() {
+      const data = Object.fromEntries(new FormData(form));
+      const id = data.id;
+      delete data.id;
+      data.salary = Number(data.salary);
+      data.hire_date = data.hire_date || null;
+      return { id, data };
+    }
+
+    function startEdit(employee) {
+      for (const [key, value] of Object.entries(employee)) {
+        if (form.elements[key]) form.elements[key].value = value ?? "";
+      }
+      document.getElementById("form-title").textContent = `Edit employee #${employee.id}`;
+      document.getElementById("submit-btn").textContent = "Save";
+      document.getElementById("cancel-btn").hidden = false;
+      setStatus(formStatus, "");
+      form.elements.name.focus();
+    }
+
+    function resetForm() {
+      form.reset();
+      form.elements.id.value = "";
+      document.getElementById("form-title").textContent = "Add employee";
+      document.getElementById("submit-btn").textContent = "Add";
+      document.getElementById("cancel-btn").hidden = true;
+    }
+
+    async function removeEmployee(employee) {
+      if (!confirm(`Delete ${employee.name}?`)) return;
+      try {
+        await request(`${API}/${employee.id}`, { method: "DELETE" });
+        setStatus(formStatus, `Deleted ${employee.name}.`);
+        if (form.elements.id.value === String(employee.id)) resetForm();
+        await loadEmployees();
+      } catch (error) {
+        setStatus(formStatus, error.message, true);
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const { id, data } = readForm();
+      const submit = document.getElementById("submit-btn");
+      submit.disabled = true;
+      try {
+        const saved = id
+          ? await request(`${API}/${id}`, { method: "PATCH", body: JSON.stringify(data) })
+          : await request(API, { method: "POST", body: JSON.stringify(data) });
+        setStatus(formStatus, `${id ? "Updated" : "Added"} ${saved.name}.`);
+        resetForm();
+        await loadEmployees();
+      } catch (error) {
+        setStatus(formStatus, error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    document.getElementById("cancel-btn").addEventListener("click", () => {
+      resetForm();
+      setStatus(formStatus, "");
+    });
+
+    let searchTimer;
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadEmployees, 250);
+    });
+
+    // ---- chat: history lives in the browser and is sent with each message
+    const chatLog = document.getElementById("chat-log");
+    const chatForm = document.getElementById("chat-form");
+    const chatInput = document.getElementById("chat-input");
+    const history = [];
+
+    function addMessage(role, text) {
+      const div = document.createElement("div");
+      div.className = `msg ${role}`;
+      div.textContent = text;
+      chatLog.append(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return div;
+    }
+
+    chatForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text) return;
+      chatInput.value = "";
+      addMessage("user", text);
+      history.push({ role: "user", content: text });
+      const sendButton = chatForm.querySelector("button");
+      sendButton.disabled = true;
+      const pending = addMessage("assistant", "Thinking…");
+      try {
+        const { reply } = await request("/api/chat", {
+          method: "POST", body: JSON.stringify({ messages: history }),
+        });
+        pending.textContent = reply;
+        history.push({ role: "assistant", content: reply });
+        await loadEmployees();  // the assistant may have changed the data
+      } catch (error) {
+        pending.className = "msg error";
+        pending.textContent = error.message;
+        history.pop();  // drop the unanswered message so it isn't resent
+      } finally {
+        sendButton.disabled = false;
+        chatInput.focus();
+      }
+    });
+
+    loadEmployees();
+  </script>
+</body>
+</html>

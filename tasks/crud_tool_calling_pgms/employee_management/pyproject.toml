@@ -1,0 +1,19 @@
+[project]
+name = "employee-management"
+version = "0.1.0"
+description = "Employee Management: FastAPI CRUD with an HTML form and an OpenAI tool-calling chatbot"
+readme = "README.md"
+authors = [
+    { name = "Praveen", email = "praveenknjun12@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.163.1",
+    "mysql-connector-python>=26.7.0",
+    "openai>=3.51.0",
+    "python-dotenv>=1.2.4",
+]
+
+[tool.uv]
+# An app run from main.py, not a library: never build this folder as a package.
+package = false
