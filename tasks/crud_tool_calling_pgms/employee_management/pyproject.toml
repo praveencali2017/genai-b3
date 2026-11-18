@@ -17,3 +17,7 @@ dependencies = [
 [tool.uv]
 # An app run from main.py, not a library: never build this folder as a package.
 package = false
+
+[tool.ruff]
+# The app's modules (employees, tools, agents) are imported as top-level siblings.
+src = ["."]
