@@ -33,6 +33,8 @@
     .empty { color:var(--muted); text-align:center; padding:20px; }
     .status { min-height:20px; font-size:13px; margin-top:8px; }
     .status.error { color:var(--danger); }
+    input[aria-invalid="true"] { border-color:var(--danger); }
+    .field-error { color:var(--danger); font-size:12px; min-height:0; }
     .chat { display:flex; flex-direction:column; height:calc(100vh - 110px); min-height:420px; }
     #chat-log { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:4px 0; }
     .msg { padding:8px 12px; border-radius:10px; max-width:90%; white-space:pre-wrap; }
@@ -79,14 +81,23 @@
     <div class="stack">
       <section class="card" aria-labelledby="form-title">
         <h2 id="form-title">Add employee</h2>
-        <form id="employee-form" class="grid">
+        <!-- novalidate: the script runs the browser's checks plus its own and shows
+             every message inline, instead of one native bubble at a time -->
+        <form id="employee-form" class="grid" novalidate>
           <input type="hidden" name="id">
-          <label>Name <input name="name" required maxlength="100"></label>
-          <label>Email <input name="email" type="email" required></label>
-          <label>Department <input name="department" required maxlength="100"></label>
-          <label>Position <input name="position" required maxlength="100"></label>
-          <label>Salary <input name="salary" type="number" min="0" step="0.01" required></label>
-          <label>Hire date <input name="hire_date" type="date"></label>
+          <label>Name <input name="name" required maxlength="100" aria-describedby="name-error">
+            <span class="field-error" id="name-error"></span></label>
+          <label>Email <input name="email" type="email" required maxlength="255" aria-describedby="email-error">
+            <span class="field-error" id="email-error"></span></label>
+          <label>Department <input name="department" required maxlength="100" aria-describedby="department-error">
+            <span class="field-error" id="department-error"></span></label>
+          <label>Position <input name="position" required maxlength="100" aria-describedby="position-error">
+            <span class="field-error" id="position-error"></span></label>
+          <label>Salary <input name="salary" type="number" min="0" max="9999999999.99" step="0.01" required
+                               inputmode="decimal" aria-describedby="salary-error">
+            <span class="field-error" id="salary-error"></span></label>
+          <label>Hire date <input name="hire_date" type="date" min="1900-01-01" aria-describedby="hire_date-error">
+            <span class="field-error" id="hire_date-error"></span></label>
           <div class="actions">
             <button type="submit" class="primary" id="submit-btn">Add</button>
             <button type="button" id="cancel-btn" hidden>Cancel edit</button>
@@ -98,7 +109,7 @@
       <section class="card" aria-labelledby="list-title">
         <div class="toolbar">
           <h2 id="list-title">Employees</h2>
-          <input id="search" type="search" placeholder="Search…" aria-label="Search employees">
+          <input id="search" type="search" placeholder="Search…" aria-label="Search employees" maxlength="100">
         </div>
         <div class="table-wrap">
           <table>
@@ -127,7 +138,8 @@
         "List everyone in Engineering" · "Change Priya's salary to 100000" · "Delete employee 3"</p>
       <div id="chat-log" aria-live="polite"></div>
       <form id="chat-form">
-        <input id="chat-input" placeholder="Ask me to manage employees…" autocomplete="off" required aria-label="Message">
+        <input id="chat-input" placeholder="Ask me to manage employees…" autocomplete="off" required
+               maxlength="4000" aria-label="Message">
         <button type="submit" class="primary">Send</button>
       </form>
     </section>
@@ -147,8 +159,16 @@
       });
       if (response.status === 204) return null;
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(describeError(body, response.status));
+      if (!response.ok) throw new ApiError(describeError(body, response.status), response.status, body);
       return body;
+    }
+
+    class ApiError extends Error {
+      constructor(message, status, body) {
+        super(message);
+        this.status = status;
+        this.body = body;
+      }
     }
 
     function describeError(body, statusCode) {
@@ -215,10 +235,106 @@
       }
     }
 
+    // ---- form validation: mirrors the API's rules so bad input never leaves the
+    // browser. The server still validates everything; this is for clear, early errors.
+    const EMPLOYEE_FIELDS = ["name", "email", "department", "position", "salary", "hire_date"];
+    const TEXT_FIELDS = ["name", "department", "position"];
+    // type="email" accepts "a@b"; the API also needs a dot in the domain.
+    const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+    const MAX_FUTURE_HIRE_YEARS = 1;
+
+    function localIsoDate(date) {
+      // toISOString() would use UTC, which is already tomorrow in the evening for US users.
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function setHireDateLimit() {
+      // Catches typos like 2206 while still allowing upcoming hires.
+      const latest = new Date();
+      latest.setFullYear(latest.getFullYear() + MAX_FUTURE_HIRE_YEARS);
+      form.elements.hire_date.max = localIsoDate(latest);
+    }
+
+    function nativeMessage(input) {
+      const v = input.validity;
+      if (v.badInput) return input.type === "number" ? "Enter a number." : "Enter a valid date.";
+      if (v.valueMissing) return "Required.";
+      if (v.typeMismatch) return "Enter a valid email like name@company.com.";
+      if (v.tooLong) return `At most ${input.maxLength} characters.`;
+      if (v.rangeUnderflow) {
+        return input.type === "date" ? `Must be on or after ${input.min}.` : "Can't be negative.";
+      }
+      if (v.rangeOverflow) {
+        return input.type === "date" ? `Must be on or before ${input.max}.`
+                                     : `At most ${Number(input.max).toLocaleString()}.`;
+      }
+      if (v.stepMismatch) return "Use at most 2 decimal places.";
+      return input.validationMessage;
+    }
+
+    function customMessage(name, value) {
+      if (TEXT_FIELDS.includes(name) && value !== "" && value.trim() === "") return "Can't be only spaces.";
+      if (name === "email" && value && !EMAIL_PATTERN.test(value.trim())) {
+        return "Enter a valid email like name@company.com.";
+      }
+      return "";
+    }
+
+    function showFieldError(name, message) {
+      const input = form.elements[name];
+      input.setCustomValidity(message);
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      document.getElementById(`${name}-error`).textContent = message;
+    }
+
+    function clearFieldErrors() {
+      for (const name of EMPLOYEE_FIELDS) showFieldError(name, "");
+    }
+
+    /** Validates every field, shows each message inline, and returns whether all passed. */
+    function validateForm() {
+      clearFieldErrors();
+      let firstInvalid = null;
+      for (const name of EMPLOYEE_FIELDS) {
+        const input = form.elements[name];
+        const message = customMessage(name, input.value) || (input.checkValidity() ? "" : nativeMessage(input));
+        showFieldError(name, message);
+        if (message && !firstInvalid) firstInvalid = input;
+      }
+      firstInvalid?.focus();
+      return firstInvalid === null;
+    }
+
+    /** Puts API validation errors (422) and duplicate emails (409) on their fields. */
+    function showServerErrors(error) {
+      if (error.status === 409) {
+        showFieldError("email", error.message);
+        form.elements.email.focus();
+        return true;
+      }
+      if (error.status !== 422 || !Array.isArray(error.body?.detail)) return false;
+      let shown = false;
+      for (const detail of error.body.detail) {
+        const name = detail.loc?.at(-1);
+        if (EMPLOYEE_FIELDS.includes(name)) {
+          showFieldError(name, detail.msg);
+          shown = true;
+        }
+      }
+      return shown;
+    }
+
+    // A field's error clears as soon as the user edits it.
+    for (const name of EMPLOYEE_FIELDS) {
+      form.elements[name].addEventListener("input", () => showFieldError(name, ""));
+    }
+
     function readForm() {
       const data = Object.fromEntries(new FormData(form));
       const id = data.id;
       delete data.id;
+      for (const name of [...TEXT_FIELDS, "email"]) data[name] = data[name].trim();
       data.salary = Number(data.salary);
       data.hire_date = data.hire_date || null;
       return { id, data };
@@ -228,6 +344,7 @@
       for (const [key, value] of Object.entries(employee)) {
         if (form.elements[key]) form.elements[key].value = value ?? "";
       }
+      clearFieldErrors();
       document.getElementById("form-title").textContent = `Edit employee #${employee.id}`;
       document.getElementById("submit-btn").textContent = "Save";
       document.getElementById("cancel-btn").hidden = false;
@@ -238,6 +355,7 @@
     function resetForm() {
       form.reset();
       form.elements.id.value = "";
+      clearFieldErrors();
       document.getElementById("form-title").textContent = "Add employee";
       document.getElementById("submit-btn").textContent = "Add";
       document.getElementById("cancel-btn").hidden = true;
@@ -257,6 +375,10 @@
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (!validateForm()) {
+        setStatus(formStatus, "Fix the highlighted fields.", true);
+        return;
+      }
       const { id, data } = readForm();
       const submit = document.getElementById("submit-btn");
       submit.disabled = true;
@@ -268,7 +390,8 @@
         resetForm();
         await loadEmployees();
       } catch (error) {
-        setStatus(formStatus, error.message, true);
+        const onFields = showServerErrors(error);
+        setStatus(formStatus, onFields ? "Fix the highlighted fields." : error.message, true);
       } finally {
         submit.disabled = false;
       }
@@ -290,6 +413,15 @@
     const chatForm = document.getElementById("chat-form");
     const chatInput = document.getElementById("chat-input");
     const history = [];
+    // Must match the API: each message is at most 4000 characters, and the server
+    // only reads the latest 20, so older ones aren't worth sending.
+    const MAX_MESSAGE_CHARS = 4000;
+    const MAX_HISTORY_MESSAGES = 20;
+
+    function remember(role, content) {
+      // A long assistant reply would otherwise make every later request fail with 422.
+      history.push({ role, content: content.slice(0, MAX_MESSAGE_CHARS) });
+    }
 
     // ---- architecture toggle (the choice is a per-browser convenience)
     const MODES = {
@@ -303,7 +435,7 @@
     const modeInputs = document.querySelectorAll('input[name="mode"]');
 
     function selectedMode() {
-      return document.querySelector('input[name="mode"]:checked').value;
+      return document.querySelector('input[name="mode"]:checked')?.value ?? "tool_calling";
     }
 
     function showModeHint() {
@@ -402,7 +534,7 @@
       const { agents, toolCalls } = countRun(trace);
       const details = element("details", "trace");
       details.append(element("summary", "",
-        `What the agents did · ${MODES[mode].label} · ${agents} agent run${agents === 1 ? "" : "s"}, ` +
+        `What the agents did · ${MODES[mode]?.label ?? mode} · ${agents} agent run${agents === 1 ? "" : "s"}, ` +
         `${toolCalls} tool call${toolCalls === 1 ? "" : "s"}`));
       details.append(renderRun(trace));
       return details;
@@ -420,21 +552,30 @@
     chatForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = chatInput.value.trim();
-      if (!text) return;
+      if (!text) {
+        chatInput.value = "";
+        return;
+      }
+      if (text.length > MAX_MESSAGE_CHARS) {
+        addMessage("error", `Messages can be at most ${MAX_MESSAGE_CHARS} characters.`);
+        return;
+      }
       chatInput.value = "";
       addMessage("user", text);
-      history.push({ role: "user", content: text });
+      remember("user", text);
       const sendButton = chatForm.querySelector("button");
       sendButton.disabled = true;
       const pending = addMessage("assistant", "Thinking…");
       try {
         const { reply, mode, trace } = await request("/api/chat", {
-          method: "POST", body: JSON.stringify({ messages: history, mode: selectedMode() }),
+          method: "POST",
+          body: JSON.stringify({ messages: history.slice(-MAX_HISTORY_MESSAGES), mode: selectedMode() }),
         });
+        if (typeof reply !== "string" || !reply) throw new Error("The server sent an unexpected reply.");
         pending.textContent = reply;
-        pending.after(renderTrace(mode, trace));
+        if (trace && Array.isArray(trace.steps)) pending.after(renderTrace(mode, trace));
         chatLog.scrollTop = chatLog.scrollHeight;
-        history.push({ role: "assistant", content: reply });
+        remember("assistant", reply);
         await loadEmployees();  // the assistant may have changed the data
       } catch (error) {
         pending.className = "msg error";
@@ -446,6 +587,7 @@
       }
     });
 
+    setHireDateLimit();
     restoreMode();
     loadEmployees();
   </script>
