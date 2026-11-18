@@ -4,14 +4,56 @@ import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
 import mysql.connector
 from mysql.connector.constants import ClientFlag
 from mysql.connector.cursor import MySQLCursorDict
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StringConstraints,
+)
 
 # ---------------------------------------------------------------- schemas
+
+MAX_TEXT_LENGTH = 100
+# DECIMAL(12, 2): the largest value the salary column can store.
+MAX_SALARY = 9_999_999_999.99
+EARLIEST_HIRE_DATE = date(1900, 1, 1)
+
+
+def _latest_hire_date(today: date) -> date:
+    """One year from today: allows upcoming hires but catches typos like 2206."""
+    try:
+        return today.replace(year=today.year + 1)
+    except ValueError:  # 29 February
+        return today.replace(year=today.year + 1, day=28)
+
+
+def _check_hire_date(value: date) -> date:
+    latest = _latest_hire_date(date.today())
+    if not EARLIEST_HIRE_DATE <= value <= latest:
+        raise ValueError(f"must be between {EARLIEST_HIRE_DATE} and {latest}")
+    return value
+
+
+def _strip(value: Any) -> Any:
+    return value.strip() if isinstance(value, str) else value
+
+
+# Surrounding whitespace is stripped before the length check, so "   " is rejected.
+TextField = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_TEXT_LENGTH),
+]
+EmailField = Annotated[EmailStr, BeforeValidator(_strip)]
+SalaryField = Annotated[float, Field(ge=0, le=MAX_SALARY, allow_inf_nan=False)]
+HireDateField = Annotated[date, AfterValidator(_check_hire_date)]
 
 
 class EmployeeCreate(BaseModel):
@@ -19,12 +61,12 @@ class EmployeeCreate(BaseModel):
     # neither the form nor the chatbot can report a change that was never stored.
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=100)
-    email: EmailStr
-    department: str = Field(min_length=1, max_length=100)
-    position: str = Field(min_length=1, max_length=100)
-    salary: float = Field(ge=0)
-    hire_date: date | None = None
+    name: TextField
+    email: EmailField
+    department: TextField
+    position: TextField
+    salary: SalaryField
+    hire_date: HireDateField | None = None
 
 
 class EmployeeUpdate(BaseModel):
@@ -32,16 +74,26 @@ class EmployeeUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, min_length=1, max_length=100)
-    email: EmailStr | None = None
-    department: str | None = Field(default=None, min_length=1, max_length=100)
-    position: str | None = Field(default=None, min_length=1, max_length=100)
-    salary: float | None = Field(default=None, ge=0)
-    hire_date: date | None = None
+    name: TextField | None = None
+    email: EmailField | None = None
+    department: TextField | None = None
+    position: TextField | None = None
+    salary: SalaryField | None = None
+    hire_date: HireDateField | None = None
 
 
-class Employee(EmployeeCreate):
+class Employee(BaseModel):
+    """A stored employee as read back from the database. Input rules live on
+    EmployeeCreate/EmployeeUpdate only, so tightening them can never make
+    existing rows unreadable."""
+
     id: int
+    name: str
+    email: str
+    department: str
+    position: str
+    salary: float
+    hire_date: date | None = None
 
 
 # ---------------------------------------------------------------- repository

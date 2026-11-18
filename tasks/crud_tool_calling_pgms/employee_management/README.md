@@ -38,10 +38,18 @@ Restart the server after editing `.env`.
 
 ## Employee fields
 
-`id`, `name`, `email` (unique, case-insensitive), `department`, `position`,
-`salary` (non-negative number) and an optional `hire_date` (YYYY-MM-DD).
-Requests with any other field are rejected with 422, so no change can be
-silently dropped.
+| Field        | Rules                                                              |
+|--------------|--------------------------------------------------------------------|
+| `id`         | Assigned by the database                                           |
+| `name`, `department`, `position` | 1–100 characters after trimming spaces; blank is rejected |
+| `email`      | Valid address with a dot in the domain; unique, case-insensitive   |
+| `salary`     | Finite number from 0 to 9,999,999,999.99 (the `DECIMAL(12, 2)` column's limit) |
+| `hire_date`  | Optional, YYYY-MM-DD, from 1900-01-01 to one year from today       |
+
+Surrounding spaces are trimmed before saving. Requests with any other field, or
+that break a rule, are rejected with 422, so no change can be silently dropped.
+The API, the chatbot tools and the form all enforce the same rules. The form
+checks them in the browser first and shows each error under its field.
 
 ## API
 
