@@ -4,6 +4,7 @@ CRUD operations with the same validation as the REST API."""
 import json
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import ValidationError
@@ -62,7 +63,7 @@ _EMPLOYEE_ID_PROPERTY: dict[str, Any] = {
 }
 
 
-def _object_schema(
+def object_schema(
     properties: dict[str, Any], required: list[str] | None = None
 ) -> dict[str, Any]:
     """Build a strict-mode parameter schema.
@@ -84,7 +85,7 @@ def _object_schema(
     }
 
 
-def _function_tool(
+def function_tool(
     name: str, description: str, parameters: dict[str, Any]
 ) -> dict[str, Any]:
     return {
@@ -96,8 +97,8 @@ def _function_tool(
     }
 
 
-TOOLS: list[dict[str, Any]] = [
-    _function_tool(
+READ_TOOLS: list[dict[str, Any]] = [
+    function_tool(
         "list_employees",
         "Read-only. List employees ordered by id, optionally filtered by a "
         "case-insensitive substring matched against name, email, department and "
@@ -105,7 +106,7 @@ TOOLS: list[dict[str, Any]] = [
         "exists, and to answer questions such as counts, totals, averages or 'who "
         "earns the most'. Pass search=null to get everyone. An empty list means no "
         "match.",
-        _object_schema(
+        object_schema(
             {
                 "search": {
                     "type": "string",
@@ -115,39 +116,42 @@ TOOLS: list[dict[str, Any]] = [
             }
         ),
     ),
-    _function_tool(
+    function_tool(
         "get_employee",
         "Read-only. Fetch one employee by id. Returns an error if the id doesn't "
         "exist.",
-        _object_schema(_EMPLOYEE_ID_PROPERTY, ["employee_id"]),
+        object_schema(_EMPLOYEE_ID_PROPERTY, ["employee_id"]),
     ),
-    _function_tool(
+]
+
+WRITE_TOOLS: list[dict[str, Any]] = [
+    function_tool(
         "create_employee",
         "Create ONE employee. Call it only when the user has supplied name, email, "
         "department, position and salary; hire_date is optional (null if not "
         "given). Never fill missing fields with placeholders or guesses. These are "
         "the only fields an employee has. Fails if the email is already in use.",
-        _object_schema(
+        object_schema(
             _EMPLOYEE_PROPERTIES, ["name", "email", "department", "position", "salary"]
         ),
     ),
-    _function_tool(
+    function_tool(
         "update_employee",
         "Update ONE existing employee. Pass the id, the new value of each field "
         "that changes, and null for every other field; at least one field must be "
         "non-null. For relative changes ('raise by 10%'), first read the current "
         "value, compute the new absolute value, and pass that. Fails if the id "
         "doesn't exist or the new email belongs to another employee.",
-        _object_schema(
+        object_schema(
             {**_EMPLOYEE_ID_PROPERTY, **_EMPLOYEE_PROPERTIES}, ["employee_id"]
         ),
     ),
-    _function_tool(
+    function_tool(
         "delete_employee",
         "Permanently delete ONE employee; this cannot be undone. Before calling it, "
         "tell the user which employee (id, name, email) will be deleted and ask "
         "them to confirm. Call it only after their reply clearly confirms.",
-        _object_schema(
+        object_schema(
             {
                 **_EMPLOYEE_ID_PROPERTY,
                 "confirmed": {
@@ -160,6 +164,8 @@ TOOLS: list[dict[str, Any]] = [
         ),
     ),
 ]
+
+TOOLS: list[dict[str, Any]] = READ_TOOLS + WRITE_TOOLS
 
 
 class ToolRefusedError(ValueError):
@@ -228,22 +234,35 @@ TOOL_HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
 }
 
 
-def run_tool(name: str, raw_arguments: str) -> str:
-    """Execute one tool call and return its JSON result. Domain errors go back to
-    the model as {"error": ...} so it can explain them or retry with fixed input."""
+@dataclass(frozen=True)
+class ToolResult:
+    """Outcome of one tool call. `value` is JSON-serializable: the tool's return
+    value, or {"error": ...} when the call failed."""
+
+    value: Any
+    is_error: bool
+
+    def to_json(self) -> str:
+        return json.dumps(self.value, default=str)
+
+
+def _error(message: str, **extra: Any) -> ToolResult:
+    return ToolResult({"error": message, **extra}, is_error=True)
+
+
+def run_tool(name: str, raw_arguments: str) -> ToolResult:
+    """Execute one tool call. Domain errors become {"error": ...} results so the
+    model can explain them or retry with fixed input."""
     handler = TOOL_HANDLERS.get(name)
     if handler is None:
-        return json.dumps({"error": f"Unknown tool {name!r}."})
+        return _error(f"Unknown tool {name!r}.")
     try:
-        result = handler(json.loads(raw_arguments or "{}"))
+        result = ToolResult(handler(json.loads(raw_arguments or "{}")), is_error=False)
     except (EmployeeNotFoundError, DuplicateEmailError, ToolRefusedError) as error:
-        result = {"error": str(error)}
+        result = _error(str(error))
     except ValidationError as error:
-        result = {
-            "error": "Invalid arguments.",
-            "details": error.errors(include_url=False),
-        }
+        result = _error("Invalid arguments.", details=error.errors(include_url=False))
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
-        result = {"error": f"Malformed arguments: {error}"}
-    logger.info("tool %s(%s) -> %s", name, raw_arguments, result)
-    return json.dumps(result, default=str)
+        result = _error(f"Malformed arguments: {error}")
+    logger.info("tool %s(%s) -> %s", name, raw_arguments, result.value)
+    return result

@@ -43,6 +43,33 @@
     #chat-form input { flex:1; }
     .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
     .hint { font-size:13px; color:var(--muted); margin:0 0 8px; }
+
+    /* architecture toggle: radios styled as a segmented control */
+    .modes { border:0; padding:0; margin:0 0 6px; }
+    .modes legend { font-size:13px; color:var(--muted); padding:0; margin-bottom:4px; }
+    .segments { display:flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+    .segments label { flex:1; display:block; position:relative; font-size:13px; color:var(--text); }
+    .segments input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+    .segments span { display:block; text-align:center; padding:6px 8px; border-left:1px solid var(--border); }
+    .segments label:first-child span { border-left:0; }
+    .segments input:checked + span { background:var(--accent); color:#fff; }
+    .segments input:focus-visible + span { outline:2px solid var(--accent); outline-offset:-4px; }
+
+    /* per-reply trace of what each agent did */
+    .trace { align-self:flex-start; max-width:90%; font-size:13px; }
+    .trace > summary { cursor:pointer; color:var(--muted); }
+    .run { border-left:3px solid var(--accent); padding:4px 0 4px 10px; margin-top:6px; }
+    .run.failed { border-left-color:var(--danger); }
+    .run-agent { font-weight:600; }
+    .steps { margin:4px 0 0; padding-left:20px; }
+    .steps li { margin:4px 0; }
+    .steps code { white-space:pre-wrap; word-break:break-word; }
+    .step-error { color:var(--danger); }
+    .step-result { color:var(--muted); }
+    .steps pre { margin:4px 0 0; padding:6px; background:var(--bg); border-radius:4px;
+                 white-space:pre-wrap; word-break:break-word; max-height:200px; overflow:auto; }
+    .returned { margin-top:4px; white-space:pre-wrap; }
+    .muted { color:var(--muted); }
   </style>
 </head>
 <body>
@@ -87,6 +114,15 @@
 
     <section class="card chat" aria-labelledby="chat-title">
       <h2 id="chat-title">Assistant</h2>
+      <fieldset class="modes">
+        <legend>Architecture</legend>
+        <div class="segments">
+          <label><input type="radio" name="mode" value="tool_calling" checked><span>Tool calling</span></label>
+          <label><input type="radio" name="mode" value="single_agent"><span>Single agent</span></label>
+          <label><input type="radio" name="mode" value="multi_agent"><span>Multi-agent</span></label>
+        </div>
+      </fieldset>
+      <p class="hint" id="mode-hint"></p>
       <p class="hint">Try: "Add Priya, priya@acme.com, Engineering, Backend Developer, 95000" ·
         "List everyone in Engineering" · "Change Priya's salary to 100000" · "Delete employee 3"</p>
       <div id="chat-log" aria-live="polite"></div>
@@ -255,6 +291,123 @@
     const chatInput = document.getElementById("chat-input");
     const history = [];
 
+    // ---- architecture toggle (the choice is a per-browser convenience)
+    const MODES = {
+      tool_calling: { label: "Tool calling", hint: "One model calls the five tools directly." },
+      single_agent: { label: "Single agent",
+                      hint: "One agent plans, reads, writes, then verifies, one tool call at a time." },
+      multi_agent: { label: "Multi-agent",
+                     hint: "A supervisor delegates to a read agent and a write agent." },
+    };
+    const MODE_STORAGE_KEY = "employee-chat-mode";
+    const modeInputs = document.querySelectorAll('input[name="mode"]');
+
+    function selectedMode() {
+      return document.querySelector('input[name="mode"]:checked').value;
+    }
+
+    function showModeHint() {
+      document.getElementById("mode-hint").textContent = MODES[selectedMode()].hint;
+    }
+
+    function restoreMode() {
+      let saved = null;
+      try { saved = localStorage.getItem(MODE_STORAGE_KEY); } catch { /* storage blocked */ }
+      const input = [...modeInputs].find(i => i.value === saved);
+      if (input) input.checked = true;
+      showModeHint();
+    }
+
+    for (const input of modeInputs) {
+      input.addEventListener("change", () => {
+        try { localStorage.setItem(MODE_STORAGE_KEY, selectedMode()); } catch { /* storage blocked */ }
+        showModeHint();
+      });
+    }
+
+    // ---- trace rendering: what each agent did for one reply
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function formatArguments(args) {
+      if (typeof args !== "object" || args === null) return String(args);
+      // Strict schemas send null for every unused field; hide them to keep it readable.
+      const provided = Object.fromEntries(Object.entries(args).filter(([, v]) => v !== null));
+      return JSON.stringify(provided);
+    }
+
+    function summarizeResult(step) {
+      const result = step.result;
+      if (step.is_error) return `error: ${result?.error ?? JSON.stringify(result)}`;
+      if (Array.isArray(result)) return `${result.length} employee${result.length === 1 ? "" : "s"}`;
+      if (result?.deleted) return `deleted #${result.deleted.id} ${result.deleted.name}`;
+      if (result?.id !== undefined) return `#${result.id} ${result.name}`;
+      return JSON.stringify(result);
+    }
+
+    function renderToolStep(step) {
+      const li = element("li");
+      li.append(element("code", "", `${step.tool}(${formatArguments(step.arguments)})`));
+      li.append(" → ", element("span", step.is_error ? "step-error" : "step-result", summarizeResult(step)));
+      const details = element("details");
+      details.append(element("summary", "muted", "result"),
+                     element("pre", "", JSON.stringify(step.result, null, 2)));
+      li.append(details);
+      return li;
+    }
+
+    function renderDelegationStep(step) {
+      const li = element("li");
+      li.append(element("div", "", `→ asked ${step.run.agent}: ${step.run.input}`));
+      li.append(renderRun(step.run));
+      li.append(element("div", step.run.is_error ? "returned step-error" : "returned",
+                        `← ${step.run.agent} returned: ${step.run.output}`));
+      return li;
+    }
+
+    function renderRun(run) {
+      const box = element("div", run.is_error ? "run failed" : "run");
+      box.append(element("div", "run-agent", run.agent));
+      if (run.steps.length === 0) {
+        box.append(element("div", "muted", "No tools used"));
+        return box;
+      }
+      const list = element("ol", "steps");
+      for (const step of run.steps) {
+        list.append(step.kind === "delegate" ? renderDelegationStep(step) : renderToolStep(step));
+      }
+      box.append(list);
+      return box;
+    }
+
+    function countRun(run) {
+      let agents = 1, toolCalls = 0;
+      for (const step of run.steps) {
+        if (step.kind === "delegate") {
+          const nested = countRun(step.run);
+          agents += nested.agents;
+          toolCalls += nested.toolCalls;
+        } else {
+          toolCalls += 1;
+        }
+      }
+      return { agents, toolCalls };
+    }
+
+    function renderTrace(mode, trace) {
+      const { agents, toolCalls } = countRun(trace);
+      const details = element("details", "trace");
+      details.append(element("summary", "",
+        `What the agents did · ${MODES[mode].label} · ${agents} agent run${agents === 1 ? "" : "s"}, ` +
+        `${toolCalls} tool call${toolCalls === 1 ? "" : "s"}`));
+      details.append(renderRun(trace));
+      return details;
+    }
+
     function addMessage(role, text) {
       const div = document.createElement("div");
       div.className = `msg ${role}`;
@@ -275,10 +428,12 @@
       sendButton.disabled = true;
       const pending = addMessage("assistant", "Thinking…");
       try {
-        const { reply } = await request("/api/chat", {
-          method: "POST", body: JSON.stringify({ messages: history }),
+        const { reply, mode, trace } = await request("/api/chat", {
+          method: "POST", body: JSON.stringify({ messages: history, mode: selectedMode() }),
         });
         pending.textContent = reply;
+        pending.after(renderTrace(mode, trace));
+        chatLog.scrollTop = chatLog.scrollHeight;
         history.push({ role: "assistant", content: reply });
         await loadEmployees();  // the assistant may have changed the data
       } catch (error) {
@@ -291,6 +446,7 @@
       }
     });
 
+    restoreMode();
     loadEmployees();
   </script>
 </body>

@@ -13,7 +13,15 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from agents import ChatMessage, answer_chat
+from agents import (
+    AgentRun,
+    AgentStepLimitError,
+    AssistantNotConfiguredError,
+    AssistantUnavailableError,
+    ChatMessage,
+    ChatMode,
+    answer_chat,
+)
 from employees import (
     DuplicateEmailError,
     Employee,
@@ -34,10 +42,15 @@ load_dotenv(APP_DIR / ".env")
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1)
+    mode: ChatMode = ChatMode.TOOL_CALLING
 
 
 class ChatReply(BaseModel):
     reply: str
+    mode: ChatMode
+    # What each agent did: its tool calls and, for the supervisor, the nested
+    # runs of the agents it delegated to.
+    trace: AgentRun
 
 
 # ---------------------------------------------------------------- HTTP API
@@ -98,4 +111,15 @@ def remove_employee(employee_id: int) -> None:
 
 @app.post("/api/chat")
 def chat(request: ChatRequest) -> ChatReply:
-    return ChatReply(reply=answer_chat(request.messages))
+    try:
+        run = answer_chat(request.messages, request.mode)
+    except AssistantNotConfiguredError as error:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(error)) from None
+    except AssistantUnavailableError as error:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(error)) from None
+    except AgentStepLimitError:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "The assistant took too many steps; try rephrasing.",
+        ) from None
+    return ChatReply(reply=run.output, mode=request.mode, trace=run)
