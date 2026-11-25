@@ -21,7 +21,7 @@ def test_defaults_load_without_any_configuration() -> None:
     assert settings.embedding_model == "sentence-transformers/all-MiniLM-L6-v2"
     assert (settings.chunk_size, settings.chunk_overlap) == (800, 150)
     assert settings.top_k == 5
-    assert settings.min_relevance == pytest.approx(0.30)
+    assert settings.min_relevance == pytest.approx(0.25)
     assert settings.agent_max_rounds == 6
     assert settings.max_upload_bytes == 10 * 1024 * 1024
     assert settings.ocr_enabled is False

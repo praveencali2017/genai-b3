@@ -80,6 +80,17 @@ class DocumentStateError(KnowledgeAssistantError):
         self.target_status = target_status
 
 
+# --- Vector store ---
+
+
+class VectorStoreError(KnowledgeAssistantError):
+    """ChromaDB failed to store, search or delete document chunks."""
+
+    def __init__(self, operation: str, cause: Exception) -> None:
+        super().__init__(f"The vector store could not {operation}: {cause}")
+        self.operation = operation
+
+
 # --- Chat history ---
 
 

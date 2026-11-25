@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # --- Vector store / files ---
     chroma_dir: Path = Path("data/chroma")
-    chroma_collection: str = Field(default="documents", min_length=1)
+    chroma_collection: str = Field(default="documents", min_length=3, max_length=512)
     upload_dir: Path = Path("data/uploads")
     max_upload_mb: PositiveInt = 10
 
@@ -64,7 +64,9 @@ class Settings(BaseSettings):
     chunk_size: PositiveInt = 800
     chunk_overlap: NonNegativeInt = 150
     top_k: PositiveInt = 5
-    min_relevance: float = Field(default=0.30, ge=0.0, le=1.0)
+    # Calibrated for MiniLM on the sample documents: answerable questions score
+    # 0.34-0.59 against their chunk, questions the documents don't cover <= 0.14.
+    min_relevance: float = Field(default=0.25, ge=0.0, le=1.0)
 
     # --- Agent ---
     agent_max_rounds: PositiveInt = 6
