@@ -1,18 +1,19 @@
 """The boundary to OpenAI: building the client and turning its failures into ours.
 
-Two pieces, deliberately thin:
+Deliberately thin:
 
 - `build_openai_client` returns None when OPENAI_API_KEY is unset, so the app
   starts (and uploads and listing work) without a key. Whoever needs the model
   calls `require_client`, which raises `AssistantNotConfiguredError` at that
   moment, never at startup.
-- `complete_text` makes one plain-text Responses API call and maps every
-  `openai.OpenAIError` to `AssistantUnavailableError`.
+- `create_response` makes one Responses API call and maps every
+  `openai.OpenAIError` to `AssistantUnavailableError`; `complete_text` builds a
+  plain-text call on it, and the agent's tool-calling loop uses it directly.
 
 The raw `openai.OpenAI` client is what the rest of the app holds, rather than a
-wrapper class, because the agent (Step 6) calls `client.responses.create` with
-tools and reads function-call items; a text-only abstraction would have to be
-bypassed there anyway. Tests pass a fake with the same `responses.create`.
+wrapper class, because the agent passes tools to the Responses API and reads
+function-call items; a text-only abstraction would have to be bypassed there
+anyway. Tests pass a fake with the same `responses.create`.
 """
 
 import logging
@@ -74,14 +75,32 @@ def complete_text(
 
     Raises `AssistantUnavailableError` if the call fails or the reply is empty.
     """
+    response = create_response(client, model, instructions, messages)
+    return require_reply_text(response, model)
+
+
+def create_response(
+    client: openai.OpenAI,
+    model: str,
+    instructions: str,
+    input_items: list[Any],
+    **options: Any,
+) -> Any:
+    """One Responses API call; `options` are passed through (e.g. `tools`).
+
+    Raises `AssistantUnavailableError` if the call fails.
+    """
     try:
-        response = client.responses.create(
-            model=model, instructions=instructions, input=messages
+        return client.responses.create(
+            model=model, instructions=instructions, input=input_items, **options
         )
     except openai.OpenAIError as error:
         logger.exception("OpenAI request failed (model=%s)", model)
         raise AssistantUnavailableError(_describe_failure(error)) from error
 
+
+def require_reply_text(response: Any, model: str) -> str:
+    """The reply's final message text; `AssistantUnavailableError` if empty."""
     text = final_message_text(response)
     if not text:
         logger.error("OpenAI returned no text (model=%s, id=%s)", model, response.id)

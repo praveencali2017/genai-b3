@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from ai_personal_knowledge_assistant.api.container import AppContainer, open_container
-from ai_personal_knowledge_assistant.api.routes import chat, documents, health
+from ai_personal_knowledge_assistant.api.routes import agent, chat, documents, health
 from ai_personal_knowledge_assistant.core.errors import (
     AgentStepLimitError,
     AssistantNotConfiguredError,
@@ -66,7 +66,9 @@ Upload PDF, DOCX or TXT files; their text is split into chunks, embedded with
 document metadata is kept in a relational database.
 
 Ask questions with `POST /chat/ask`: answers come only from the retrieved
-excerpts, cite them as [n], and list their sources. Answering needs
+excerpts, cite them as [n], and list their sources. Or chat with the agent
+at `POST /agent/chat`: it decides on its own whether to list the documents,
+search them or answer from them, and reports the tools it used. Both need
 `OPENAI_API_KEY`; uploading and listing work without it.
 """
 
@@ -96,6 +98,7 @@ def create_app(container_factory: ContainerFactory | None = None) -> FastAPI:
     app.add_exception_handler(Exception, _handle_unexpected_error)
     app.include_router(documents.router)
     app.include_router(chat.router)
+    app.include_router(agent.router)
     app.include_router(health.router)
     return app
 
@@ -106,7 +109,10 @@ def _open_default_container() -> AbstractContextManager[AppContainer]:
 
 async def _handle_domain_error(_request: Request, error: Exception) -> JSONResponse:
     status_code = _status_for(error)
-    if status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
+    if isinstance(error, AssistantNotConfiguredError):
+        # A configuration state, not a fault: no traceback to look at.
+        logger.warning("Request needs the language model: %s", error)
+    elif status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
         logger.error("Request failed: %s", error, exc_info=error)
     return JSONResponse(status_code=status_code, content={"detail": str(error)})
 

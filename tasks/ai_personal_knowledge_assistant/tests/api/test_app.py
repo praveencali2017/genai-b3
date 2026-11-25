@@ -1,5 +1,6 @@
 """App-level behaviour: import side effects, lifespan, health, error mapping, docs."""
 
+import logging
 import os
 import subprocess
 import sys
@@ -79,11 +80,18 @@ def test_health_reports_counts(client: TestClient, sample_docs_dir: Path) -> Non
     }
 
 
-def test_openapi_documents_the_document_endpoints(client: TestClient) -> None:
+def test_openapi_documents_the_required_endpoints(client: TestClient) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "AI Personal Knowledge Assistant"
-    assert {"/documents/upload", "/documents", "/health"} <= set(schema["paths"])
+    paths = schema["paths"]
+    assert "post" in paths["/documents/upload"]
+    assert "get" in paths["/documents"]
+    assert "post" in paths["/chat/ask"]
+    assert "post" in paths["/agent/chat"]
+    assert "/health" in paths
+    agent_responses = paths["/agent/chat"]["post"]["responses"]
+    assert {"200", "422", "502", "503"} <= set(agent_responses)
     upload_responses = schema["paths"]["/documents/upload"]["post"]["responses"]
     assert {"201", "409", "413", "415", "422", "503"} <= set(upload_responses)
     assert client.get("/docs").status_code == 200
@@ -125,3 +133,34 @@ def test_a_subclass_without_its_own_mapping_uses_its_parents(app: FastAPI) -> No
     app.add_api_route("/fail", fail)
     with TestClient(app) as client:
         assert client.get("/fail").status_code == 503
+
+
+def test_a_missing_key_is_logged_as_a_warning_without_a_traceback(
+    app: FastAPI, caplog: pytest.LogCaptureFixture
+) -> None:
+    def fail() -> None:
+        raise AssistantNotConfiguredError("OPENAI_API_KEY is not set.")
+
+    app.add_api_route("/fail", fail)
+    with TestClient(app) as client, caplog.at_level(logging.WARNING):
+        client.get("/fail")
+
+    (record,) = [r for r in caplog.records if r.name.endswith("api.main")]
+    assert record.levelno == logging.WARNING
+    assert record.exc_info is None
+    assert "OPENAI_API_KEY" in record.getMessage()
+
+
+def test_a_model_failure_is_logged_as_an_error_with_a_traceback(
+    app: FastAPI, caplog: pytest.LogCaptureFixture
+) -> None:
+    def fail() -> None:
+        raise AssistantUnavailableError("OpenAI timed out.")
+
+    app.add_api_route("/fail", fail)
+    with TestClient(app) as client, caplog.at_level(logging.WARNING):
+        client.get("/fail")
+
+    (record,) = [r for r in caplog.records if r.name.endswith("api.main")]
+    assert record.levelno == logging.ERROR
+    assert record.exc_info is not None

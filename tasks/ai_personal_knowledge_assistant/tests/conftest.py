@@ -6,11 +6,23 @@ from pathlib import Path
 import pytest
 from chromadb.api.client import SharedSystemClient
 from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import ONNXMiniLM_L6_V2
+from sqlalchemy.orm import Session, sessionmaker
 
 from ai_personal_knowledge_assistant.core.settings import Settings, get_settings
+from ai_personal_knowledge_assistant.ingestion.pipeline import (
+    IngestionConfig,
+    IngestionPipeline,
+)
+from ai_personal_knowledge_assistant.storage.database import (
+    create_db_engine,
+    create_session_factory,
+    init_db,
+)
+from ai_personal_knowledge_assistant.storage.records import DocumentRecord
 from ai_personal_knowledge_assistant.vectorstore.chroma_store import ChromaVectorStore
-from tests.fakes import FakeEmbedder
+from tests.fakes import FakeEmbedder, FakeOpenAI
 
+SAMPLE_DOCS_DIR = Path(__file__).resolve().parents[1] / "sample_docs"
 SETTING_NAMES = [name.upper() for name in Settings.model_fields]
 TEST_COLLECTION = "test-chunks"
 
@@ -66,3 +78,37 @@ def fake_embedder() -> FakeEmbedder:
 def vector_store(chroma_dir: Path, fake_embedder: FakeEmbedder) -> ChromaVectorStore:
     """An empty on-disk store in this test's own temporary folder."""
     return ChromaVectorStore.persistent(chroma_dir, TEST_COLLECTION, fake_embedder)
+
+
+@pytest.fixture
+def session_factory() -> Iterator[sessionmaker[Session]]:
+    engine = create_db_engine("sqlite://")
+    init_db(engine)
+    yield create_session_factory(engine)
+    engine.dispose()
+
+
+@pytest.fixture
+def hr_policy(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    vector_store: ChromaVectorStore,
+) -> DocumentRecord:
+    """sample_docs/HR_Policy.pdf, ingested through the real pipeline."""
+    pipeline = IngestionPipeline(
+        session_factory,
+        vector_store,
+        IngestionConfig(
+            upload_dir=tmp_path / "uploads",
+            max_bytes=1_000_000,
+            chunk_size=800,
+            chunk_overlap=150,
+        ),
+    )
+    content = (SAMPLE_DOCS_DIR / "HR_Policy.pdf").read_bytes()
+    return pipeline.ingest("HR_Policy.pdf", content)
+
+
+@pytest.fixture
+def fake_openai() -> FakeOpenAI:
+    return FakeOpenAI()

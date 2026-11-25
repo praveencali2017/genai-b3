@@ -1,11 +1,12 @@
 """Request and response bodies of the HTTP API."""
 
 from datetime import datetime
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, PositiveInt, StringConstraints
 
+from ai_personal_knowledge_assistant.agent.runner import AgentRun, ToolCall
 from ai_personal_knowledge_assistant.rag.answerer import Answer, Source
 from ai_personal_knowledge_assistant.storage.records import (
     DocumentRecord,
@@ -55,6 +56,7 @@ class HealthOut(BaseModel):
 
 QUESTION_MAX_LENGTH = 2000
 
+# A chat message from the user: a question for /chat/ask, any message for the agent.
 Question = Annotated[
     str,
     StringConstraints(
@@ -63,13 +65,15 @@ Question = Annotated[
 ]
 
 
+SESSION_ID_DESCRIPTION = (
+    "Continue this conversation; omit to start a new one. "
+    "The response returns the id to send next time."
+)
+
+
 class AskRequest(BaseModel):
     question: Question = Field(examples=["How many casual leaves are allowed?"])
-    session_id: UUID | None = Field(
-        default=None,
-        description="Continue this conversation; omit to start a new one. "
-        "The response returns the id to send next time.",
-    )
+    session_id: UUID | None = Field(default=None, description=SESSION_ID_DESCRIPTION)
     document_ids: list[PositiveInt] | None = Field(
         default=None,
         description="Search only these documents; omit to search all of them.",
@@ -113,4 +117,52 @@ class AskResponse(BaseModel):
             is_grounded=answer.is_grounded,
             sources=[SourceOut.from_source(source) for source in answer.sources],
             session_id=session_id,
+        )
+
+
+class AgentChatRequest(BaseModel):
+    message: Question = Field(examples=["List my uploaded documents."])
+    session_id: UUID | None = Field(default=None, description=SESSION_ID_DESCRIPTION)
+
+
+class ToolCallOut(BaseModel):
+    tool: str = Field(examples=["list_documents"])
+    arguments: Any = Field(
+        description="The arguments the agent passed, or the raw text if it "
+        "sent invalid JSON."
+    )
+    is_error: bool
+    summary: str = Field(
+        description="A short description of the result, or the error message.",
+        examples=["1 document"],
+    )
+
+    @classmethod
+    def from_tool_call(cls, call: ToolCall) -> Self:
+        return cls(
+            tool=call.tool,
+            arguments=call.arguments,
+            is_error=call.is_error,
+            summary=call.summary,
+        )
+
+
+class AgentChatResponse(BaseModel):
+    reply: str
+    session_id: UUID
+    tool_calls: list[ToolCallOut] = Field(
+        description="The tools the agent used, in order."
+    )
+    sources: list[SourceOut] = Field(
+        description="The excerpts behind the agent's document answers. Each "
+        "`citation` is the [n] of the answer_from_documents result it came from."
+    )
+
+    @classmethod
+    def from_run(cls, run: AgentRun, session_id: UUID) -> Self:
+        return cls(
+            reply=run.output,
+            session_id=session_id,
+            tool_calls=[ToolCallOut.from_tool_call(call) for call in run.tool_calls],
+            sources=[SourceOut.from_source(source) for source in run.sources],
         )

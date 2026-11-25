@@ -1,6 +1,7 @@
 """Test doubles for the application's external boundaries."""
 
 import hashlib
+import json
 import math
 import re
 from collections import deque
@@ -103,30 +104,44 @@ class FlakyVectorStore(ChromaVectorStore):
         super().delete_document(document_id)
 
 
+# A scripted model reply: text, a prebuilt Responses API result (e.g. from
+# `tool_calls_response`), or an exception to raise.
+ScriptedReply = str | SimpleNamespace | Exception
+
+
 class FakeResponses:
     """Stands in for `client.responses`: replays scripted replies, records calls.
 
     Each `create` call is recorded (its keyword arguments) in `calls` and takes
     the next scripted reply: a string becomes a one-message Responses API
-    result, an exception is raised. Calling with nothing scripted fails the
-    test, so an unexpected model call can't pass silently.
+    result, a `SimpleNamespace` is returned as the result, an exception is
+    raised. Calling with nothing scripted fails the test, so an unexpected
+    model call can't pass silently.
+
+    `input` is recorded as a copy: the real client serializes it during the
+    call, so a caller that keeps appending to its list afterwards (the agent
+    loop does) must not change what an earlier call appears to have sent.
     """
 
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
-        self._replies: deque[str | Exception] = deque()
+        self._replies: deque[ScriptedReply] = deque()
 
-    def script(self, *replies: str | Exception) -> None:
+    def script(self, *replies: ScriptedReply) -> None:
         self._replies.extend(replies)
 
     def create(self, **kwargs: Any) -> SimpleNamespace:
+        if "input" in kwargs:
+            kwargs = {**kwargs, "input": list(kwargs["input"])}
         self.calls.append(kwargs)
         if not self._replies:
             raise AssertionError(f"unexpected OpenAI call: {kwargs}")
         reply = self._replies.popleft()
         if isinstance(reply, Exception):
             raise reply
-        return text_response(reply)
+        if isinstance(reply, str):
+            return text_response(reply)
+        return reply
 
 
 class FakeOpenAI:
@@ -142,3 +157,23 @@ def text_response(text: str) -> SimpleNamespace:
         type="message", content=[SimpleNamespace(type="output_text", text=text)]
     )
     return SimpleNamespace(id="resp_fake", output=[message], output_text=text)
+
+
+def function_call(
+    name: str, arguments: dict[str, Any] | str, call_id: str | None = None
+) -> SimpleNamespace:
+    """A Responses API function-call output item.
+
+    A dict is sent as JSON, a string as-is (to script malformed arguments).
+    """
+    return SimpleNamespace(
+        type="function_call",
+        name=name,
+        arguments=arguments if isinstance(arguments, str) else json.dumps(arguments),
+        call_id=call_id or f"call_{name}",
+    )
+
+
+def tool_calls_response(*calls: SimpleNamespace) -> SimpleNamespace:
+    """A Responses API result in which the model asks for `calls`."""
+    return SimpleNamespace(id="resp_fake_tools", output=list(calls), output_text="")

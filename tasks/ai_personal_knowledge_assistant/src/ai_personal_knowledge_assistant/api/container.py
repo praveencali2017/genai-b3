@@ -13,6 +13,8 @@ from dataclasses import dataclass
 import openai
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_personal_knowledge_assistant.agent.runner import SingleAgent
+from ai_personal_knowledge_assistant.agent.tools import AgentToolkit
 from ai_personal_knowledge_assistant.core.settings import Settings
 from ai_personal_knowledge_assistant.ingestion.pipeline import (
     IngestionConfig,
@@ -45,6 +47,7 @@ class AppContainer:
     # None when OPENAI_API_KEY isn't set; the LLM endpoints then answer 503.
     openai_client: openai.OpenAI | None
     answerer: GroundedAnswerer
+    agent: SingleAgent
 
 
 @contextmanager
@@ -74,6 +77,7 @@ def open_container(
             vector_store, settings.top_k, settings.min_relevance
         )
         openai_client = openai_client_factory(settings)
+        answerer = GroundedAnswerer(retriever, openai_client, settings.openai_model)
         yield AppContainer(
             settings=settings,
             session_factory=session_factory,
@@ -83,7 +87,13 @@ def open_container(
                 settings, session_factory, vector_store
             ),
             openai_client=openai_client,
-            answerer=GroundedAnswerer(retriever, openai_client, settings.openai_model),
+            answerer=answerer,
+            agent=SingleAgent(
+                openai_client,
+                settings.openai_model,
+                AgentToolkit(session_factory, retriever, answerer),
+                settings.agent_max_rounds,
+            ),
         )
     finally:
         engine.dispose()

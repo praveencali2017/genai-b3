@@ -11,6 +11,7 @@ from typing import Annotated, cast
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_personal_knowledge_assistant.agent.runner import SingleAgent
 from ai_personal_knowledge_assistant.api.container import AppContainer
 from ai_personal_knowledge_assistant.ingestion.pipeline import IngestionPipeline
 from ai_personal_knowledge_assistant.rag.answerer import GroundedAnswerer
@@ -46,6 +47,10 @@ def get_answerer(container: Container) -> GroundedAnswerer:
     return container.answerer
 
 
+def get_agent(container: Container) -> SingleAgent:
+    return container.agent
+
+
 def get_session_factory(container: Container) -> sessionmaker[Session]:
     """For routes that need more than one short transaction per request.
 
@@ -55,3 +60,6 @@ def get_session_factory(container: Container) -> sessionmaker[Session]:
     committing; separate transactions before and after the call avoid that.
     """
     return container.session_factory
+
+
+SessionFactory = Annotated[sessionmaker[Session], Depends(get_session_factory)]
