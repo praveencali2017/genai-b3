@@ -6,6 +6,8 @@ Messages are written for the end user: they say what went wrong and, where it
 helps, what to do about it.
 """
 
+from uuid import UUID
+
 
 class KnowledgeAssistantError(Exception):
     """Base class for every error this application raises on purpose."""
@@ -60,6 +62,33 @@ class DocumentNotFoundError(KnowledgeAssistantError):
     def __init__(self, document_id: int) -> None:
         super().__init__(f"Document {document_id} not found.")
         self.document_id = document_id
+
+
+class DocumentStateError(KnowledgeAssistantError):
+    """A document status change was requested from a status that doesn't allow it,
+    e.g. marking a document `ready` that has already `failed`."""
+
+    def __init__(
+        self, document_id: int, current_status: str, target_status: str
+    ) -> None:
+        super().__init__(
+            f"Document {document_id} is {current_status!r}; "
+            f"it can't be marked {target_status!r}."
+        )
+        self.document_id = document_id
+        self.current_status = current_status
+        self.target_status = target_status
+
+
+# --- Chat history ---
+
+
+class ChatSessionNotFoundError(KnowledgeAssistantError):
+    """No chat session exists with the requested id."""
+
+    def __init__(self, session_id: UUID) -> None:
+        super().__init__(f"Chat session {session_id} not found.")
+        self.session_id = session_id
 
 
 # --- Language model / agent ---
