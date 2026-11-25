@@ -25,6 +25,7 @@ dependencies = [
 
 [project.scripts]
 restaurant-api = "ai_restaurant_ordering_assistant.cli:run_api"
+restaurant-seed = "ai_restaurant_ordering_assistant.cli:run_seed"
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]

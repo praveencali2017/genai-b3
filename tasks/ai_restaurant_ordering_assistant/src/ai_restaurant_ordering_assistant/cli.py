@@ -1,15 +1,26 @@
 """Console entry points.
 
 - `restaurant-api`: serve the API and web UI with uvicorn.
+- `restaurant-seed`: add the fictional menu and demo accounts (idempotent).
+
+The schema itself comes from Alembic: `alembic upgrade head` before seeding.
 """
 
 import argparse
+import logging
 from collections.abc import Sequence
 
+from ai_restaurant_ordering_assistant.config.database import (
+    create_db_engine,
+    create_session_factory,
+    session_scope,
+)
 from ai_restaurant_ordering_assistant.config.logging import configure_logging
 from ai_restaurant_ordering_assistant.config.settings import get_settings
 
 API_APP = "ai_restaurant_ordering_assistant.main:app"
+
+logger = logging.getLogger(__name__)
 
 
 def run_api(argv: Sequence[str] | None = None) -> None:
@@ -37,3 +48,25 @@ def run_api(argv: Sequence[str] | None = None) -> None:
         reload=args.reload,
         log_level=settings.log_level.lower(),
     )
+
+
+def run_seed(argv: Sequence[str] | None = None) -> None:
+    """Add the demo menu and accounts that are missing."""
+    argparse.ArgumentParser(
+        prog="restaurant-seed",
+        description="Add the fictional menu and demo accounts to the database. "
+        "Existing rows are left untouched. Run `alembic upgrade head` first.",
+    ).parse_args(argv)
+
+    from ai_restaurant_ordering_assistant.seed import seed_accounts, seed_menu
+
+    settings = get_settings()
+    configure_logging(settings.log_level)
+    engine = create_db_engine(settings.database_url.get_secret_value())
+    try:
+        with session_scope(create_session_factory(engine)) as session:
+            accounts = seed_accounts(session)
+            dishes = seed_menu(session)
+    finally:
+        engine.dispose()
+    logger.info("Seeded %d accounts and %d dishes.", accounts, dishes)
