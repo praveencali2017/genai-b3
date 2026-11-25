@@ -17,6 +17,8 @@ from ai_restaurant_ordering_assistant.container import AppContainer, open_contai
 from ai_restaurant_ordering_assistant.controllers import (
     admin_orders,
     auth,
+    chat,
+    documents,
     health,
     menu_items,
     orders,
@@ -56,7 +58,7 @@ def create_app(container_factory: ContainerFactory | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     register_error_handling(app)
-    for module in (health, auth, menu_items, orders, admin_orders):
+    for module in (health, auth, menu_items, orders, admin_orders, chat, documents):
         app.include_router(module.router)
     # Mounted last so the API routes above take precedence over static files.
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

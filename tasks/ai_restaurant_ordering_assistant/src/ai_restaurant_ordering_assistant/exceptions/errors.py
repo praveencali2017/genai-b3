@@ -112,3 +112,65 @@ class IdempotencyConflictError(BusinessConflictError):
             "different order. Use a new key for a new order."
         )
         self.idempotency_key = idempotency_key
+
+
+class TermsChangedError(BusinessConflictError):
+    """A pending order's price or availability changed before confirmation."""
+
+    code = "TERMS_CHANGED"
+
+
+# --- Uploaded documents ---
+
+
+class InvalidDocumentError(RestaurantError):
+    """An uploaded file can't be indexed: empty, damaged or without text."""
+
+    code = "INVALID_DOCUMENT"
+
+
+class UnsupportedFileError(InvalidDocumentError):
+    code = "UNSUPPORTED_FILE"
+
+
+class FileTooLargeError(InvalidDocumentError):
+    code = "FILE_TOO_LARGE"
+
+    def __init__(self, size_bytes: int, limit_bytes: int) -> None:
+        super().__init__(
+            f"The file is {size_bytes / 1_048_576:.1f} MB; "
+            f"the limit is {limit_bytes / 1_048_576:.0f} MB."
+        )
+
+
+class DuplicateDocumentError(BusinessConflictError):
+    code = "DUPLICATE_DOCUMENT"
+
+    def __init__(self, filename: str, version: int) -> None:
+        super().__init__(
+            f"This exact file is already indexed as {filename} (version {version})."
+        )
+
+
+# --- AI dependencies (language model, embeddings, vector store) ---
+
+
+class AiServiceError(RestaurantError):
+    """An AI dependency failed; the request can be retried later."""
+
+    code = "AI_UNAVAILABLE"
+
+
+class AssistantNotConfiguredError(AiServiceError):
+    code = "AI_NOT_CONFIGURED"
+
+
+class AssistantUnavailableError(AiServiceError):
+    """The language-model or embedding API call failed or timed out."""
+
+
+class VectorStoreError(AiServiceError):
+    code = "VECTOR_STORE_UNAVAILABLE"
+
+    def __init__(self, operation: str, cause: Exception) -> None:
+        super().__init__(f"The document index could not {operation}: {cause}")

@@ -39,9 +39,19 @@ class Settings(BaseSettings):
     # --- MySQL (required) ---
     database_url: SecretStr
 
-    # --- OpenAI (needed only by the chatbot and document indexing) ---
+    # --- Language model (needed only by the chatbot) ---
+    # Any OpenAI-compatible Chat Completions API: OpenAI by default; set
+    # OPENAI_BASE_URL for another provider (Ollama, Groq, OpenRouter, ...).
     openai_api_key: SecretStr | None = None
-    openai_model: str = Field(default="gpt-5.4-mini", min_length=1)
+    openai_base_url: str | None = None
+    openai_model: str = Field(default="gpt-4o-mini", min_length=1)
+
+    # --- Embeddings (needed by document indexing and retrieval) ---
+    # Default to the language-model provider. Changing the embedding model
+    # requires re-indexing the documents (delete CHROMA_PATH, run
+    # restaurant-index), since old and new vectors aren't comparable.
+    embedding_api_key: SecretStr | None = None
+    embedding_base_url: str | None = None
     openai_embedding_model: str = Field(default="text-embedding-3-small", min_length=1)
 
     # --- Documents and vector store ---
@@ -59,8 +69,10 @@ class Settings(BaseSettings):
     min_relevance: float = Field(default=0.3, ge=0.0, le=1.0)
 
     # --- Agent and chat ---
-    # The agent's tools call this API over HTTP, as the signed-in user.
-    internal_api_base_url: str = "http://127.0.0.1:8000"
+    # The agent's tools call this API over HTTP, as the signed-in user. Unset
+    # means http://127.0.0.1:API_PORT. Never derived from a request's Host
+    # header, which a client controls.
+    internal_api_base_url: str | None = None
     agent_max_iterations: PositiveInt = 6
     tool_timeout_seconds: float = Field(default=10.0, gt=0)
     pending_action_ttl_minutes: PositiveInt = 15
@@ -77,6 +89,18 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
+
+    @property
+    def internal_api_url(self) -> str:
+        return self.internal_api_base_url or f"http://127.0.0.1:{self.api_port}"
+
+    @property
+    def embeddings_api_key(self) -> SecretStr | None:
+        return self.embedding_api_key or self.openai_api_key
+
+    @property
+    def embeddings_base_url(self) -> str | None:
+        return self.embedding_base_url or self.openai_base_url
 
     @field_validator("log_level", mode="before")
     @classmethod
@@ -102,9 +126,11 @@ class Settings(BaseSettings):
             )
         return url
 
-    @field_validator("internal_api_base_url")
+    @field_validator("internal_api_base_url", "openai_base_url", "embedding_base_url")
     @classmethod
-    def _require_http_url(cls, url: str) -> str:
+    def _require_http_url(cls, url: str | None) -> str | None:
+        if url is None:
+            return None
         if not url.startswith(("http://", "https://")):
             raise ValueError("must start with http:// or https://")
         return url.rstrip("/")

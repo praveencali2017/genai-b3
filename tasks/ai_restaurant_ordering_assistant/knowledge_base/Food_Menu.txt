@@ -1,0 +1,24 @@
+Food Menu
+Version 1.0 - Effective 2026-01-01
+
+Praveen's Kitchen serves authentic South Indian and North Indian cuisine.
+
+Breakfast:
+- Masala Dosa (₹90, vegetarian, 20 portions): Crisp rice crepe with spiced potato filling, sambar and chutney.
+- Idli Sambar (₹60, vegetarian, 30 portions): Three steamed rice cakes with lentil sambar and coconut chutney.
+- Medu Vada (₹50, vegetarian, 25 portions): Two crunchy lentil fritters served with sambar.
+
+Main course:
+- Paneer Biryani (₹180, vegetarian, 10 portions): Basmati rice layered with spiced cottage cheese and saffron.
+- Veg Thali (₹150, vegetarian, 15 portions): Rice, two rotis, dal, two vegetable curries, curd and pickle.
+- Chole Bhature (₹120, vegetarian, 18 portions): Spiced chickpea curry with two fluffy fried breads.
+- Chicken Biryani (₹240, non-vegetarian, 12 portions): Hyderabadi dum biryani with tender chicken and raita.
+- Butter Chicken with Naan (₹260, non-vegetarian, 8 portions): Chicken in a creamy tomato gravy with two butter naans.
+- Fish Curry Meal (₹280, non-vegetarian, 6 portions): Coastal-style fish curry with steamed rice.
+
+Dessert:
+- Gulab Jamun (₹70, vegetarian, 40 portions): Two warm milk dumplings in cardamom syrup.
+
+Beverages:
+- Mango Lassi (₹80, vegetarian, 30 portions): Chilled yoghurt drink blended with Alphonso mango.
+- Filter Coffee (₹40, vegetarian, 50 portions): South Indian coffee brewed with chicory and frothed milk.

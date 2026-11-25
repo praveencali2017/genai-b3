@@ -1,0 +1,16 @@
+Restaurant Policy
+Version 1.0 - Effective 2026-01-01
+
+Cancellation policy:
+Orders may be cancelled before preparation begins. Once an order moves to
+PREPARING status, it cannot be cancelled. When an order is cancelled, all
+reserved portions are restored to inventory immediately.
+
+Refund policy:
+Cancelled orders are refunded to the original payment method. Refunds are
+processed within 3-5 business days.
+
+Allergen notice:
+We never guarantee allergen safety. Our kitchen handles common allergens and
+cross-contact cannot be ruled out. Customers with severe allergies should
+order at their own risk.

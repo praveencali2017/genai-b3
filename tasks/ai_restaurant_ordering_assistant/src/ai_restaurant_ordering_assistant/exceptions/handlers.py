@@ -20,12 +20,16 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ai_restaurant_ordering_assistant.exceptions.errors import (
+    AiServiceError,
     AuthenticationError,
     BusinessConflictError,
+    FileTooLargeError,
+    InvalidDocumentError,
     PermissionDeniedError,
     RateLimitedError,
     ResourceNotFoundError,
     RestaurantError,
+    UnsupportedFileError,
 )
 from ai_restaurant_ordering_assistant.schemas.error import ErrorResponse
 
@@ -44,6 +48,11 @@ ERROR_STATUS: dict[type[RestaurantError], int] = {
     ResourceNotFoundError: status.HTTP_404_NOT_FOUND,
     BusinessConflictError: status.HTTP_409_CONFLICT,
     RateLimitedError: status.HTTP_429_TOO_MANY_REQUESTS,
+    InvalidDocumentError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    UnsupportedFileError: status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    FileTooLargeError: status.HTTP_413_CONTENT_TOO_LARGE,
+    # An AI dependency being down is "try again later", not a server bug.
+    AiServiceError: status.HTTP_503_SERVICE_UNAVAILABLE,
 }
 
 
@@ -75,7 +84,9 @@ async def _assign_request_id(
 async def _handle_domain_error(request: Request, error: Exception) -> JSONResponse:
     assert isinstance(error, RestaurantError)
     status_code = _status_for(error)
-    if status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
+    if isinstance(error, AiServiceError):
+        logger.warning("Request %s: %s", request_id_of(request), error)
+    elif status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
         logger.error(
             "Request %s failed: %s", request_id_of(request), error, exc_info=error
         )

@@ -30,10 +30,11 @@ from ai_restaurant_ordering_assistant.models import User
 from ai_restaurant_ordering_assistant.repositories.user_repository import (
     UserRepository,
 )
+from ai_restaurant_ordering_assistant.security.internal_identity import (
+    ACTING_USER_HEADER,
+    INTERNAL_TOKEN_HEADER,
+)
 from ai_restaurant_ordering_assistant.security.passwords import verify_password
-
-INTERNAL_TOKEN_HEADER = "X-Internal-Token"
-ACTING_USER_HEADER = "X-Acting-User-Id"
 
 _basic = HTTPBasic(
     auto_error=False,

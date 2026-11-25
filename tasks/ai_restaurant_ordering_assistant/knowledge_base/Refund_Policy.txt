@@ -1,0 +1,15 @@
+Refund Policy
+Version 1.0 - Effective 2026-01-01
+
+Eligibility:
+Refunds are available for orders cancelled before preparation begins
+(CONFIRMED status only). Orders in PREPARING, OUT_FOR_DELIVERY, or
+DELIVERED status are not eligible for cancellation or refund.
+
+Process:
+1. Customer requests cancellation through chat or the website.
+2. The system verifies the order is in a cancellable status.
+3. Stock is restored and the refund is initiated.
+4. Refunds appear within 3-5 business days.
+
+Partial refunds are not issued for partially consumed orders.
