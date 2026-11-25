@@ -1,0 +1,11 @@
+# Local settings and secrets (see .env.example)
+.env
+
+# Runtime state: SQLite DB, ChromaDB, uploaded files
+/data/
+
+# Python / tooling
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

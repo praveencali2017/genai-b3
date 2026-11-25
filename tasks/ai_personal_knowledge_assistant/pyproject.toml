@@ -1,0 +1,64 @@
+[project]
+name = "ai-personal-knowledge-assistant"
+version = "0.1.0"
+description = "Document chatbot: upload PDF/DOCX/TXT files and ask grounded questions, answered by RAG over ChromaDB and an OpenAI tool-calling agent"
+readme = "README.md"
+authors = [
+    { name = "Praveen", email = "praveenknjun12@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=1.5.9",
+    "fastapi[standard]>=0.163.1",
+    "httpx>=0.28.1",
+    "openai>=3.51.0",
+    "pydantic-settings>=2.16.3",
+    "pypdf>=7.1.1",
+    "python-docx>=1.2.0",
+    "sentence-transformers>=6.3.0",
+    "sqlalchemy>=2.1.9",
+    "streamlit>=1.67.0",
+]
+
+[project.scripts]
+pka-api = "ai_personal_knowledge_assistant.cli:run_api"
+pka-ui = "ai_personal_knowledge_assistant.cli:run_ui"
+
+[project.optional-dependencies]
+mysql = [
+    "pymysql>=1.2.4",
+]
+ocr = [
+    "pdf2image>=1.17.0",
+    "pytesseract>=0.3.13",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fpdf2>=2.9.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, pyupgrade, bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ai_personal_knowledge_assistant"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: needs a real model download or other slow resources (run with `-m slow`)",
+]
+addopts = "-m 'not slow'"
