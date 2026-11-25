@@ -24,9 +24,16 @@ class ApiError(Exception):
 
 
 class KnowledgeApiClient:
-    def __init__(self, base_url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
+        """`transport` replaces httpx's network transport (tests pass a mock)."""
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self._transport = transport
 
     def health(self) -> dict[str, Any]:
         return self._request("GET", "/health")
@@ -63,9 +70,12 @@ class KnowledgeApiClient:
     ) -> Any:
         url = f"{self._base_url}{path}"
         try:
-            response = httpx.request(
-                method, url, timeout=timeout or self._timeout, **kwargs
-            )
+            # One client per request, as `httpx.request` does: Streamlit reruns
+            # the script often, so there is no long-lived owner to close a pool.
+            with httpx.Client(transport=self._transport) as http:
+                response = http.request(
+                    method, url, timeout=timeout or self._timeout, **kwargs
+                )
         except httpx.ConnectError as error:
             raise ApiError(
                 f"Can't reach the API at {self._base_url}; "
@@ -80,7 +90,13 @@ class KnowledgeApiClient:
 
         if response.is_error:
             raise ApiError(_error_message(response), response.status_code)
-        return response.json()
+        try:
+            return response.json()
+        except ValueError as error:  # e.g. a proxy's HTML page instead of the API
+            raise ApiError(
+                f"The API at {self._base_url} returned a non-JSON response.",
+                response.status_code,
+            ) from error
 
 
 def _error_message(response: httpx.Response) -> str:

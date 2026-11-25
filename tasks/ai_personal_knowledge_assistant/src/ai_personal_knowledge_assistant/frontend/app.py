@@ -6,9 +6,7 @@ every interaction, so all state that must survive a rerun (chat histories,
 session ids, the last upload's outcome) lives in `st.session_state`.
 """
 
-import json
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 import streamlit as st
@@ -17,6 +15,11 @@ from ai_personal_knowledge_assistant.core.settings import get_settings
 from ai_personal_knowledge_assistant.frontend.api_client import (
     ApiError,
     KnowledgeApiClient,
+)
+from ai_personal_knowledge_assistant.frontend.formatting import (
+    document_details,
+    source_heading,
+    tool_calls_caption,
 )
 
 Message = dict[str, Any]
@@ -134,22 +137,7 @@ def render_document_list(client: KnowledgeApiClient) -> None:
         return
     for document in documents:
         st.markdown(f"**{document['filename']}**")
-        st.caption(_document_details(document))
-
-
-def _document_details(document: dict[str, Any]) -> str:
-    details = [document["file_type"].upper()]
-    if document["page_count"] is not None:
-        details.append(_plural(document["page_count"], "page"))
-    details.append(_plural(document["chunk_count"], "chunk"))
-    # The API sends UTC; show the viewer's local time.
-    uploaded_at = datetime.fromisoformat(document["created_at"]).astimezone()
-    details.append(f"uploaded {uploaded_at:%Y-%m-%d %H:%M}")
-    return " · ".join(details)
-
-
-def _plural(count: int, noun: str) -> str:
-    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+        st.caption(document_details(document))
 
 
 # --- Chat tabs ---------------------------------------------------------------
@@ -217,37 +205,13 @@ def render_message(message: Message) -> None:
 
 
 def render_tool_calls(tool_calls: list[dict[str, Any]]) -> None:
-    if not tool_calls:
-        st.caption("Tools used: none")
-        return
-    lines = ["**Tools used**"]
-    for call in tool_calls:
-        icon = "⚠️" if call["is_error"] else "🔧"
-        lines.append(
-            f"{icon} `{call['tool']}`{_format_arguments(call['arguments'])} "
-            f"— {call['summary']}"
-        )
-    st.caption("  \n".join(lines))
-
-
-def _format_arguments(arguments: Any) -> str:
-    if not arguments:
-        return ""
-    # The API passes invalid JSON from the model through as raw text.
-    if isinstance(arguments, str):
-        return f" `{arguments}`"
-    return f" `{json.dumps(arguments, ensure_ascii=False)}`"
+    st.caption(tool_calls_caption(tool_calls))
 
 
 def render_sources(sources: list[dict[str, Any]]) -> None:
     with st.expander(f"Sources ({len(sources)})"):
         for source in sources:
-            location = source["filename"]
-            if source["page"] is not None:
-                location += f" — page {source['page']}"
-            st.markdown(
-                f"**[{source['citation']}] {location}** (score {source['score']:.2f})"
-            )
+            st.markdown(source_heading(source))
             st.caption(source["snippet"])
 
 

@@ -53,15 +53,20 @@ def no_chroma_default_model(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-@pytest.fixture
-def release_chroma_clients() -> Iterator[None]:
-    """Close Chroma's cached per-path clients after the test.
+def release_chroma() -> None:
+    """Close Chroma's cached per-path clients, as a process exit would.
 
     Chroma shares one in-process system per data folder; clearing the cache
-    releases its file handles and stops state leaking between tests.
+    releases its file handles, so the next client on that folder starts cold.
     """
-    yield
     SharedSystemClient.clear_system_cache()
+
+
+@pytest.fixture
+def release_chroma_clients() -> Iterator[None]:
+    """Release Chroma's clients after the test, so state can't leak between tests."""
+    yield
+    release_chroma()
 
 
 @pytest.fixture

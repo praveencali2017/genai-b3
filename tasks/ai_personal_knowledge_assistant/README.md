@@ -316,7 +316,7 @@ uv run pytest -q -m slow      # slow tests: download and use the real MiniLM mod
 uv run ruff check .
 ```
 
-Current result: `406 passed, 1 skipped, 3 deselected` for the default suite. The 3 deselected
+Current result: `449 passed, 1 skipped, 3 deselected` for the default suite. The 3 deselected
 tests are the `slow` ones; the skipped one is the real-OCR test, which runs only when tesseract
 and poppler are installed (see [OCR](#optional-ocr-for-scanned-pdfs)).
 
@@ -332,13 +332,21 @@ What the suite covers, with tests mirroring `src/` under `tests/`:
   with it off, scans get the "needs OCR" 422. Missing packages or programs are logged at startup
   and OCR is turned off; OCR failures during an upload return 422 or 503 and store nothing.
 - **Persistence:** chunks written to ChromaDB are found again by a new `PersistentClient` on the
-  same folder (the restart scenario).
+  same folder. At the API level, an app that is shut down and rebuilt on the same SQLite and Chroma
+  folders still lists the uploaded document and answers from its page-2 chunk, without re-embedding.
+- **Demo scenario:** `tests/api/test_demo_scenario.py` runs the brief's demo through the HTTP API,
+  one test per success criterion (answered with source, evidence from ChromaDB, refusal without
+  an LLM call, agent tools shown).
 - **Agent:** "List my uploaded documents" runs `list_documents` and reports it in `tool_calls`.
   A leave question uses `answer_from_documents` and returns its sources. Unknown tools and bad
   JSON arguments are fed back to the model, the step limit returns 502, and history carries over
   within a `session_id`.
 - **Source display:** API responses carry structured sources (citation, filename, page, score,
-  snippet). The Streamlit rendering itself has no automated tests yet.
+  snippet).
+- **Frontend:** the HTTP client is tested against a mock transport (requests, parsing, `detail`
+  and 422 error messages, unreachable API, timeouts). The caption helpers have unit tests, and
+  Streamlit's `AppTest` runs the UI against a fake client: empty states, an answer with sources,
+  the "not found" caption, and the agent's "Tools used".
 - **Retrieval calibration (slow):** with the real MiniLM model, the casual-leave question finds
   the casual-leave chunk, and an unrelated question scores below `MIN_RELEVANCE`.
 
