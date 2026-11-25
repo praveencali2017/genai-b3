@@ -35,4 +35,5 @@ src = ["src", "tasks/*", "tasks/fastapi_crud_pgms/*"]
 members = [
     "tasks/crud_tool_calling_pgms/employee_management",
     "tasks/ai_personal_knowledge_assistant",
+    "tasks/ai_restaurant_ordering_assistant",
 ]
