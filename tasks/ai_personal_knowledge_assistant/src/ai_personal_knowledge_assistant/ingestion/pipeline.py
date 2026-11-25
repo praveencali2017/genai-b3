@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ai_personal_knowledge_assistant.ingestion.chunker import chunk_pages
 from ai_personal_knowledge_assistant.ingestion.extractors import Page, extract_pages
+from ai_personal_knowledge_assistant.ingestion.ocr import PageOcr
 from ai_personal_knowledge_assistant.ingestion.validation import (
     ValidatedUpload,
     validate_upload,
@@ -65,10 +66,13 @@ class IngestionPipeline:
         session_factory: sessionmaker[Session],
         vector_store: ChromaVectorStore,
         config: IngestionConfig,
+        ocr: PageOcr | None = None,
     ) -> None:
+        """`ocr` reads scanned PDF pages; None leaves pages without text out."""
         self._session_factory = session_factory
         self._vector_store = vector_store
         self._config = config
+        self._ocr = ocr
 
     @property
     def max_bytes(self) -> int:
@@ -78,8 +82,9 @@ class IngestionPipeline:
         """Store one upload and return its `ready` record.
 
         Raises the validation and extraction errors (`UnsupportedFileError`,
-        `FileTooLargeError`, `EmptyDocumentError`, `CorruptDocumentError`),
-        `DuplicateDocumentError`, or `VectorStoreError`. After any failure,
+        `FileTooLargeError`, `EmptyDocumentError`, `CorruptDocumentError`,
+        `OcrFailedError`, `OcrUnavailableError`), `DuplicateDocumentError`, or
+        `VectorStoreError`. After any failure,
         nothing of this upload is left in the database, upload folder or
         vector store.
         """
@@ -116,7 +121,7 @@ class IngestionPipeline:
         stored_path.parent.mkdir(parents=True, exist_ok=True)
         stored_path.write_bytes(content)
 
-        pages = extract_pages(content, upload.file_type)
+        pages = extract_pages(content, upload.file_type, self._ocr)
         chunks = chunk_pages(pages, self._config.chunk_size, self._config.chunk_overlap)
         # SQLite hands out the id of a deleted last row again. If an earlier
         # attempt with this id left vectors behind (its cleanup failed), they

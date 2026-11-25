@@ -45,6 +45,22 @@ class CorruptDocumentError(InvalidDocumentError):
     encrypted)."""
 
 
+class OcrFailedError(InvalidDocumentError):
+    """OCR was needed for a PDF page, but the page could not be rendered or read."""
+
+
+# --- Optional OCR ---
+
+
+class OcrUnavailableError(KnowledgeAssistantError):
+    """OCR_ENABLED is true, but the `ocr` extra (pytesseract, pdf2image) or the
+    tesseract/poppler programs are missing."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"OCR is enabled but unavailable: {reason}")
+        self.reason = reason
+
+
 # --- Document catalogue ---
 
 

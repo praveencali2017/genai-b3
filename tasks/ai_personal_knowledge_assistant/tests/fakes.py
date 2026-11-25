@@ -104,6 +104,30 @@ class FlakyVectorStore(ChromaVectorStore):
         super().delete_document(document_id)
 
 
+class FakePageOcr:
+    """`PageOcr` that returns scripted text per page and records what it read.
+
+    Pages missing from `texts_by_page` read as "". With `error` set, every read
+    raises it instead.
+    """
+
+    def __init__(
+        self,
+        texts_by_page: dict[int, str] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self._texts_by_page = texts_by_page or {}
+        self._error = error
+        self.pages_read: list[int] = []
+
+    def read_page(self, pdf: bytes, page_number: int) -> str:
+        assert pdf.startswith(b"%PDF-"), "OCR must be given the PDF's bytes"
+        self.pages_read.append(page_number)
+        if self._error is not None:
+            raise self._error
+        return self._texts_by_page.get(page_number, "")
+
+
 # A scripted model reply: text, a prebuilt Responses API result (e.g. from
 # `tool_calls_response`), or an exception to raise.
 ScriptedReply = str | SimpleNamespace | Exception

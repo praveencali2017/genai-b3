@@ -18,6 +18,7 @@ Streamlit app provides the UI.
 | No invented answers | Chunks below `MIN_RELEVANCE` are dropped. If none are left, a fixed "couldn't find this" reply is returned **without calling the LLM**. The prompt allows answers from the numbered excerpts only |
 | Single AI agent | `POST /agent/chat`. Manual tool-calling loop on the OpenAI Responses API over three tools: `list_documents`, `search_documents`, `answer_from_documents`. Every call is returned in `tool_calls` |
 | Metadata + chat history | SQLAlchemy: SQLite by default, MySQL by changing `DATABASE_URL`. Stores documents, chat sessions, and messages with their sources and tool calls |
+| Scanned PDFs (optional) | With `OCR_ENABLED=true` and the `ocr` extra, PDF pages without a text layer are read with Tesseract OCR and keep their page numbers. See [OCR for scanned PDFs](#optional-ocr-for-scanned-pdfs) |
 | UI | Streamlit: upload and document list in the sidebar, an "Ask documents" tab and an "Agent chat" tab, sources in an expander, "Tools used" under each agent reply |
 
 ## Tech stack
@@ -31,7 +32,7 @@ Streamlit app provides the UI.
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (local, CPU, 384 dimensions, normalized) |
 | Vector store | ChromaDB `PersistentClient`, cosine distance |
 | Relational DB | SQLAlchemy 2: SQLite (default) or MySQL (`pymysql`) |
-| Text extraction | pypdf, python-docx, TXT with encoding detection |
+| Text extraction | pypdf, python-docx, TXT with encoding detection; optional OCR with pdf2image (poppler) + pytesseract (Tesseract) |
 | Tests / lint | pytest, ruff |
 
 ## Architecture
@@ -163,7 +164,7 @@ current working directory.
 | `CHAT_HISTORY_LIMIT` | `20` | Past messages of a session sent back to the model |
 | `API_HOST` / `API_PORT` | `127.0.0.1` / `8000` | Bind address of `pka-api` |
 | `API_BASE_URL` | `http://127.0.0.1:8000` | Where the Streamlit UI finds the API |
-| `OCR_ENABLED` | `false` | Reserved for OCR of scanned PDFs. Not implemented yet (see [Status](#project-status-and-limitations)) |
+| `OCR_ENABLED` | `false` | OCR for PDF pages without a text layer. Needs the `ocr` extra plus tesseract and poppler (see [OCR for scanned PDFs](#optional-ocr-for-scanned-pdfs)) |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL` |
 
 **Why `MIN_RELEVANCE=0.25`.** The value was calibrated on MiniLM similarity scores for the
@@ -287,9 +288,9 @@ curl http://127.0.0.1:8000/health
 |---|---|
 | 415 | Not a PDF, DOCX or TXT, or the content doesn't match the extension |
 | 413 | File larger than `MAX_UPLOAD_MB` |
-| 422 | Empty file, no extractable text, damaged file, or an invalid request body |
+| 422 | Empty file, no extractable text (even after OCR, when enabled), damaged file, OCR failed on a page, or an invalid request body |
 | 409 | The same file (by content) was already uploaded |
-| 503 | `OPENAI_API_KEY` not set, or the vector store failed: retry after fixing |
+| 503 | `OPENAI_API_KEY` not set, the vector store failed, or tesseract/poppler disappeared while the server was running: retry after fixing |
 | 502 | The OpenAI call failed, or the agent didn't finish within `AGENT_MAX_ROUNDS` |
 
 ## Demo walkthrough
@@ -315,8 +316,9 @@ uv run pytest -q -m slow      # slow tests: download and use the real MiniLM mod
 uv run ruff check .
 ```
 
-Current result: `383 passed, 3 deselected` for the default suite. The 3 deselected tests are the
-`slow` ones.
+Current result: `406 passed, 1 skipped, 3 deselected` for the default suite. The 3 deselected
+tests are the `slow` ones; the skipped one is the real-OCR test, which runs only when tesseract
+and poppler are installed (see [OCR](#optional-ocr-for-scanned-pdfs)).
 
 What the suite covers, with tests mirroring `src/` under `tests/`:
 
@@ -326,6 +328,9 @@ What the suite covers, with tests mirroring `src/` under `tests/`:
 - **Questions:** a covered question gets an answer with filename/page sources. An unrelated
   question gets the "not found" reply **without the LLM being called**. A missing key returns 503
   and an OpenAI failure 502.
+- **OCR:** with OCR on, only pages without a text layer are OCR'd and keep their page numbers;
+  with it off, scans get the "needs OCR" 422. Missing packages or programs are logged at startup
+  and OCR is turned off; OCR failures during an upload return 422 or 503 and store nothing.
 - **Persistence:** chunks written to ChromaDB are found again by a new `PersistentClient` on the
   same folder (the restart scenario).
 - **Agent:** "List my uploaded documents" runs `list_documents` and reports it in `tool_calls`.
@@ -355,6 +360,44 @@ Then set the URL in `.env`. The database must already exist; the tables are crea
 DATABASE_URL=mysql+pymysql://user:password@localhost:3306/pka
 ```
 
+## Optional: OCR for scanned PDFs
+
+PDF pages that have no text layer (scans, photographed pages) can be read with Tesseract OCR.
+Only those pages are OCR'd; pages with embedded text are extracted as usual. OCR'd text keeps the
+real page number, so citations such as `scan.pdf, p. 3` stay right.
+
+1. Install the Python packages (`pytesseract`, `pdf2image`) from the repo root:
+
+   ```bash
+   uv sync --all-packages --extra ocr
+   ```
+
+   (`uv sync --all-packages --all-extras` also installs them, together with the MySQL driver.)
+
+2. Install the OCR programs: Tesseract for recognition, poppler (`pdftoppm`, `pdfinfo`) for
+   rendering pages to images:
+
+   ```bash
+   brew install tesseract poppler                     # macOS
+   sudo apt install tesseract-ocr poppler-utils       # Debian / Ubuntu
+   ```
+
+3. Set `OCR_ENABLED=true` in `.env` and restart the API.
+
+At startup the API checks that the packages and the `tesseract`, `pdftoppm` and `pdfinfo`
+programs are present. If anything is missing, it logs an `ERROR` that says what to install and
+**runs without OCR** rather than refusing to start, since everything else still works. Scanned
+PDFs are then rejected with 422 as if OCR were disabled. A startup line
+`OCR is enabled for PDF pages that have no text layer.` confirms OCR is active.
+
+Pages are rendered at 300 dpi and read as English (`eng`), with a 120-second limit per page for
+rendering and for recognition. If a page can't be rendered or read, the upload fails with 422 and
+nothing is stored. If OCR finds no text anywhere, the upload is rejected with 422 ("even with
+OCR").
+
+The real-OCR test (`tests/ingestion/test_ocr.py`) is skipped unless `tesseract`, `pdftoppm` and
+`pdfinfo` are on `PATH`. All other OCR tests use a fake OCR engine or stubbed libraries.
+
 ## Sample documents
 
 `sample_docs/` holds fictional company documents for "Northwind Analytics", generated by
@@ -383,9 +426,12 @@ Captured from a live run and stored in [`docs/screenshots/`](docs/screenshots/):
 
 - **No authentication and no multi-user support.** All documents and chat sessions are shared by
   anyone who can reach the API.
-- **No OCR yet.** Scanned PDFs without a text layer are rejected with 422 ("no extractable
-  text"). `OCR_ENABLED` and the `ocr` extra (`pytesseract`, `pdf2image`) are already declared,
-  but OCR itself is not implemented. A later step (Step 8) will add it.
+- **OCR is optional and basic.** It is off by default. With OCR off, scanned PDFs without a
+  text layer are rejected with 422 ("no extractable text"). With OCR on, it runs synchronously
+  inside the upload request, so a long scan can take a while (seconds per page) before
+  the request returns. It reads English only, applies to PDFs only (not images or DOCX
+  files with embedded pictures), and does not straighten skewed or rotated scans. A page that
+  has *some* embedded text (e.g. a scan with a typed header) is not OCR'd.
 - **No database migrations.** Tables are created with `create_all` at startup. A schema change
   means deleting `data/app.db` (or migrating the database by hand).
 - **DOCX and TXT have no page numbers.** Their sources show the filename only (`page: null`).

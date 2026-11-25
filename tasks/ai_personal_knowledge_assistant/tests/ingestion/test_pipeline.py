@@ -33,7 +33,7 @@ from ai_personal_knowledge_assistant.storage.records import (
 )
 from ai_personal_knowledge_assistant.vectorstore.chroma_store import ChromaVectorStore
 from tests.conftest import TEST_COLLECTION
-from tests.fakes import FakeEmbedder, FlakyVectorStore
+from tests.fakes import FakeEmbedder, FakePageOcr, FlakyVectorStore
 from tests.ingestion.builders import make_pdf
 
 CORRUPT_PDF = b"%PDF-1.7\nthis is not really a pdf"
@@ -139,6 +139,21 @@ def test_page_count_is_the_last_page_with_text(pipeline: IngestionPipeline) -> N
     document = pipeline.ingest("gaps.pdf", content)
 
     assert document.page_count == 3
+
+
+def test_scanned_pages_are_ingested_through_the_given_ocr(
+    session_factory: sessionmaker[Session],
+    flaky_store: FlakyVectorStore,
+    config: IngestionConfig,
+) -> None:
+    ocr = FakePageOcr({2: "Scanned travel allowance rules."})
+    pipeline = IngestionPipeline(session_factory, flaky_store, config, ocr)
+
+    document = pipeline.ingest("scan.pdf", make_pdf(["Typed cover page.", ""]))
+
+    assert ocr.pages_read == [2]
+    assert document.page_count == 2
+    assert flaky_store.count_for(document.id) == document.chunk_count == 2
 
 
 def test_leftover_vectors_of_a_reused_id_are_replaced(

@@ -30,6 +30,8 @@ from ai_personal_knowledge_assistant.core.errors import (
     EmptyDocumentError,
     FileTooLargeError,
     KnowledgeAssistantError,
+    OcrFailedError,
+    OcrUnavailableError,
     UnsupportedFileError,
     VectorStoreError,
 )
@@ -47,12 +49,16 @@ ERROR_STATUS: dict[type[KnowledgeAssistantError], int] = {
     FileTooLargeError: status.HTTP_413_CONTENT_TOO_LARGE,
     EmptyDocumentError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     CorruptDocumentError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    OcrFailedError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     DuplicateDocumentError: status.HTTP_409_CONFLICT,
     DocumentNotFoundError: status.HTTP_404_NOT_FOUND,
     DocumentStateError: status.HTTP_409_CONFLICT,
     ChatSessionNotFoundError: status.HTTP_404_NOT_FOUND,
     # Chroma is a dependency of this service; its failure is "try again later".
     VectorStoreError: status.HTTP_503_SERVICE_UNAVAILABLE,
+    # The startup check turns OCR off when it is unavailable, so this only
+    # happens if tesseract or poppler is removed while the server runs.
+    OcrUnavailableError: status.HTTP_503_SERVICE_UNAVAILABLE,
     AssistantNotConfiguredError: status.HTTP_503_SERVICE_UNAVAILABLE,
     AssistantUnavailableError: status.HTTP_502_BAD_GATEWAY,
     AgentStepLimitError: status.HTTP_502_BAD_GATEWAY,
