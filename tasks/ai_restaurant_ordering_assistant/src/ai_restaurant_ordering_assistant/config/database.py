@@ -32,6 +32,11 @@ def create_db_engine(database_url: str, *, echo: bool = False) -> Engine:
         # MySQL drops idle connections (wait_timeout); check and recycle them.
         pool_pre_ping=True,
         pool_recycle=MYSQL_POOL_RECYCLE_SECONDS,
+        # Not MySQL's default REPEATABLE READ: after waiting on a row lock, a
+        # transaction must see what the lock holder committed (e.g. the order a
+        # concurrent retry with the same idempotency key just created), and
+        # lookups by unique key shouldn't take gap locks that deadlock inserts.
+        isolation_level="READ COMMITTED",
     )
 
 

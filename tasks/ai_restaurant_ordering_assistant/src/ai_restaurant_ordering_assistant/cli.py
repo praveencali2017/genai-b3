@@ -1,7 +1,8 @@
 """Console entry points.
 
 - `restaurant-api`: serve the API and web UI with uvicorn.
-- `restaurant-seed`: add the fictional menu and demo accounts (idempotent).
+- `restaurant-seed`: add the fictional menu, demo accounts and sample orders
+  (idempotent).
 
 The schema itself comes from Alembic: `alembic upgrade head` before seeding.
 """
@@ -54,11 +55,16 @@ def run_seed(argv: Sequence[str] | None = None) -> None:
     """Add the demo menu and accounts that are missing."""
     argparse.ArgumentParser(
         prog="restaurant-seed",
-        description="Add the fictional menu and demo accounts to the database. "
+        description="Add the fictional menu, demo accounts and sample orders to the "
+        "database. "
         "Existing rows are left untouched. Run `alembic upgrade head` first.",
     ).parse_args(argv)
 
-    from ai_restaurant_ordering_assistant.seed import seed_accounts, seed_menu
+    from ai_restaurant_ordering_assistant.seed import (
+        seed_accounts,
+        seed_menu,
+        seed_orders,
+    )
 
     settings = get_settings()
     configure_logging(settings.log_level)
@@ -67,6 +73,9 @@ def run_seed(argv: Sequence[str] | None = None) -> None:
         with session_scope(create_session_factory(engine)) as session:
             accounts = seed_accounts(session)
             dishes = seed_menu(session)
+            orders = seed_orders(session)
     finally:
         engine.dispose()
-    logger.info("Seeded %d accounts and %d dishes.", accounts, dishes)
+    logger.info(
+        "Seeded %d accounts, %d dishes and %d orders.", accounts, dishes, orders
+    )

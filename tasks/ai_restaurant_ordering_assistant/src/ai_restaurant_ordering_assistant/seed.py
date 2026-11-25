@@ -1,8 +1,10 @@
-"""Fictional demo data: the menu and the demo accounts.
+"""Fictional demo data: the menu, the demo accounts and three sample orders.
 
 Idempotent: rows are matched by their natural key (dish title, username) and
 only missing ones are added, so running the seed again never resets stock that
-orders have used, nor a password someone changed.
+orders have used, nor a password someone changed. Sample orders go through
+`OrderService` with fixed idempotency keys, so they obey the same stock and
+price rules as real orders and a re-run finds them instead of ordering again.
 
 The passwords are for the local demo only and are documented in the README.
 """
@@ -16,7 +18,12 @@ from sqlalchemy.orm import Session
 
 from ai_restaurant_ordering_assistant.models import MenuItem, User
 from ai_restaurant_ordering_assistant.models.enums import Role
+from ai_restaurant_ordering_assistant.repositories.user_repository import (
+    UserRepository,
+)
+from ai_restaurant_ordering_assistant.schemas.order import OrderCreate
 from ai_restaurant_ordering_assistant.security.passwords import hash_password
+from ai_restaurant_ordering_assistant.services.order_service import OrderService
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +72,15 @@ SEED_MENU: tuple[SeedDish, ...] = (
              "South Indian coffee brewed with chicory and frothed milk."),
 )  # fmt: skip
 
+
+@dataclass(frozen=True, slots=True)
+class SeedOrder:
+    username: str
+    idempotency_key: str
+    # Dish title -> quantity
+    dishes: dict[str, int]
+
+
 SEED_ACCOUNTS: tuple[SeedAccount, ...] = (
     SeedAccount("admin", "Admin@123", Role.ADMIN),
     SeedAccount("alice", "Alice@123", Role.USER),
@@ -106,3 +122,36 @@ def seed_accounts(session: Session) -> int:
     )
     session.flush()
     return len(missing)
+
+
+SEED_ORDERS: tuple[SeedOrder, ...] = (
+    SeedOrder("alice", "seed-order-1", {"Masala Dosa": 2, "Filter Coffee": 2}),
+    SeedOrder("alice", "seed-order-2", {"Paneer Biryani": 1, "Mango Lassi": 1}),
+    SeedOrder("bob", "seed-order-3", {"Veg Thali": 1, "Gulab Jamun": 2}),
+)
+
+
+def seed_orders(session: Session) -> int:
+    """Place the sample orders that don't exist yet; returns how many were
+    placed. Needs the accounts and menu to be seeded first."""
+    item_ids = {
+        title: item_id
+        for title, item_id in session.execute(select(MenuItem.title, MenuItem.id))
+    }
+    users = UserRepository(session)
+    orders = OrderService(session)
+    placed = 0
+    for sample in SEED_ORDERS:
+        user = users.get_by_username(sample.username)
+        if user is None:
+            raise LookupError(f"seed account {sample.username!r} is missing")
+        request = OrderCreate.model_validate(
+            {
+                "lines": [
+                    {"item_id": item_ids[title], "quantity": quantity}
+                    for title, quantity in sample.dishes.items()
+                ]
+            }
+        )
+        placed += orders.place(user, request, sample.idempotency_key).created
+    return placed

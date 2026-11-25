@@ -5,9 +5,10 @@ life of the process; route dependencies read from it (see
 `controllers/dependencies.py`).
 """
 
+import secrets
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,6 +25,11 @@ class AppContainer:
     settings: Settings
     engine: Engine
     session_factory: sessionmaker[Session]
+    # Authenticates the agent's calls to this API (see security/basic_auth.py).
+    # New on every start, so it is never stored anywhere.
+    internal_token: str = field(
+        default_factory=lambda: secrets.token_urlsafe(32), repr=False
+    )
 
 
 @contextmanager

@@ -12,13 +12,26 @@ from fastapi import FastAPI
 
 from ai_restaurant_ordering_assistant.config.settings import get_settings
 from ai_restaurant_ordering_assistant.container import AppContainer, open_container
-from ai_restaurant_ordering_assistant.controllers import health
+from ai_restaurant_ordering_assistant.controllers import (
+    admin_orders,
+    auth,
+    health,
+    menu_items,
+    orders,
+)
+from ai_restaurant_ordering_assistant.exceptions.handlers import (
+    register_error_handling,
+)
 
 ContainerFactory = Callable[[], AbstractContextManager[AppContainer]]
 
 APP_DESCRIPTION = """
-Order food from a fictional restaurant, through the REST API, the web UI at `/`,
+Order food from a fictional restaurant through this REST API, the web UI at `/`,
 or the AI chatbot.
+
+Protected endpoints use **HTTP Basic** authentication: click *Authorize* and
+sign in with a demo account from the README. Every error has the body
+`{"code", "message", "request_id"}`.
 """
 
 
@@ -38,7 +51,9 @@ def create_app(container_factory: ContainerFactory | None = None) -> FastAPI:
         version=version("ai-restaurant-ordering-assistant"),
         lifespan=lifespan,
     )
-    app.include_router(health.router)
+    register_error_handling(app)
+    for module in (health, auth, menu_items, orders, admin_orders):
+        app.include_router(module.router)
     return app
 
 
