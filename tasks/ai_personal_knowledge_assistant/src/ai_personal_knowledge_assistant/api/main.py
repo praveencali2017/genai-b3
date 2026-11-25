@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from ai_personal_knowledge_assistant.api.container import AppContainer, open_container
-from ai_personal_knowledge_assistant.api.routes import documents, health
+from ai_personal_knowledge_assistant.api.routes import chat, documents, health
 from ai_personal_knowledge_assistant.core.errors import (
     AgentStepLimitError,
     AssistantNotConfiguredError,
@@ -64,6 +64,10 @@ Chat with your own documents.
 Upload PDF, DOCX or TXT files; their text is split into chunks, embedded with
 `all-MiniLM-L6-v2` and stored in a persistent ChromaDB collection, while the
 document metadata is kept in a relational database.
+
+Ask questions with `POST /chat/ask`: answers come only from the retrieved
+excerpts, cite them as [n], and list their sources. Answering needs
+`OPENAI_API_KEY`; uploading and listing work without it.
 """
 
 
@@ -91,6 +95,7 @@ def create_app(container_factory: ContainerFactory | None = None) -> FastAPI:
         app.add_exception_handler(error_class, _handle_domain_error)
     app.add_exception_handler(Exception, _handle_unexpected_error)
     app.include_router(documents.router)
+    app.include_router(chat.router)
     app.include_router(health.router)
     return app
 

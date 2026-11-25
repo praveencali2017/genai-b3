@@ -3,7 +3,10 @@
 import hashlib
 import math
 import re
+from collections import deque
 from collections.abc import Sequence
+from types import SimpleNamespace
+from typing import Any
 
 from ai_personal_knowledge_assistant.core.errors import VectorStoreError
 from ai_personal_knowledge_assistant.ingestion.chunker import Chunk
@@ -98,3 +101,44 @@ class FlakyVectorStore(ChromaVectorStore):
                 RuntimeError("injected delete fault"),
             )
         super().delete_document(document_id)
+
+
+class FakeResponses:
+    """Stands in for `client.responses`: replays scripted replies, records calls.
+
+    Each `create` call is recorded (its keyword arguments) in `calls` and takes
+    the next scripted reply: a string becomes a one-message Responses API
+    result, an exception is raised. Calling with nothing scripted fails the
+    test, so an unexpected model call can't pass silently.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self._replies: deque[str | Exception] = deque()
+
+    def script(self, *replies: str | Exception) -> None:
+        self._replies.extend(replies)
+
+    def create(self, **kwargs: Any) -> SimpleNamespace:
+        self.calls.append(kwargs)
+        if not self._replies:
+            raise AssertionError(f"unexpected OpenAI call: {kwargs}")
+        reply = self._replies.popleft()
+        if isinstance(reply, Exception):
+            raise reply
+        return text_response(reply)
+
+
+class FakeOpenAI:
+    """Stands in for `openai.OpenAI`; only `responses.create` is used."""
+
+    def __init__(self) -> None:
+        self.responses = FakeResponses()
+
+
+def text_response(text: str) -> SimpleNamespace:
+    """A Responses API result holding one assistant message with `text`."""
+    message = SimpleNamespace(
+        type="message", content=[SimpleNamespace(type="output_text", text=text)]
+    )
+    return SimpleNamespace(id="resp_fake", output=[message], output_text=text)
