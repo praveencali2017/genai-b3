@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Annapoorna Kitchen</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🍛</span>
+      <span class="brand-name">Annapoorna Kitchen</span>
+      <span class="brand-note">fictional demo</span>
+    </div>
+
+    <form id="login-form" class="login" autocomplete="on">
+      <label class="visually-hidden" for="login-username">Username</label>
+      <input id="login-username" name="username" placeholder="Username" required autocomplete="username">
+      <label class="visually-hidden" for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" placeholder="Password" required autocomplete="current-password">
+      <button type="submit">Sign in</button>
+    </form>
+
+    <div id="session" class="session" hidden>
+      <span>Signed in as <strong id="session-user"></strong> <span id="session-role" class="badge"></span></span>
+      <button id="logout" type="button" class="secondary">Sign out</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <button type="button" class="tab" data-tab="menu" aria-selected="true">Menu</button>
+    <button type="button" class="tab" data-tab="orders" aria-selected="false" data-requires="user">My orders</button>
+    <button type="button" class="tab" data-tab="admin" aria-selected="false" data-requires="admin" hidden>Admin</button>
+  </nav>
+
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+  <div class="layout">
+    <main>
+      <!-- Menu ------------------------------------------------------------>
+      <section id="tab-menu" class="panel" aria-labelledby="menu-heading">
+        <h1 id="menu-heading">Menu</h1>
+        <form id="filters" class="filters">
+          <label>Search <input name="keyword" type="search" placeholder="dosa, biryani…" maxlength="100"></label>
+          <label>Category
+            <select name="category"><option value="">All</option></select>
+          </label>
+          <label>Max price (₹) <input name="max_price" type="number" min="1" step="1" inputmode="numeric"></label>
+          <label class="check"><input name="vegetarian" type="checkbox"> Vegetarian only</label>
+          <button type="submit">Apply</button>
+          <button type="reset" class="secondary">Clear</button>
+        </form>
+        <p id="menu-status" class="muted" aria-live="polite"></p>
+        <ul id="menu-grid" class="menu-grid"></ul>
+
+        <section id="cart" class="cart" aria-labelledby="cart-heading">
+          <h2 id="cart-heading">Your cart</h2>
+          <p id="cart-empty" class="muted">Your cart is empty.</p>
+          <ul id="cart-lines" class="cart-lines"></ul>
+          <div class="cart-footer">
+            <span>Estimated total: <strong id="cart-total">₹0.00</strong></span>
+            <button id="place-order" type="button" disabled>Place order</button>
+          </div>
+          <p class="muted small">Prices and stock are checked again when you place the order.</p>
+        </section>
+      </section>
+
+      <!-- My orders ------------------------------------------------------->
+      <section id="tab-orders" class="panel" aria-labelledby="orders-heading" hidden>
+        <h1 id="orders-heading">My orders</h1>
+        <p id="orders-status" class="muted" aria-live="polite"></p>
+        <ul id="orders-list" class="orders"></ul>
+      </section>
+
+      <!-- Admin ------------------------------------------------------------>
+      <section id="tab-admin" class="panel" aria-labelledby="admin-heading" hidden>
+        <h1 id="admin-heading">Admin</h1>
+
+        <h2>Add a dish</h2>
+        <form id="item-create" class="item-form">
+          <label>Title <input name="title" required minlength="3" maxlength="120"></label>
+          <label>Category <input name="category" required minlength="2" maxlength="50"></label>
+          <label>Price (₹) <input name="price" type="number" required min="0.01" step="0.01"></label>
+          <label>Portions <input name="capacity" type="number" required min="0" step="1"></label>
+          <label class="wide">Description <input name="description" maxlength="500"></label>
+          <label class="check"><input name="vegetarian" type="checkbox" checked> Vegetarian</label>
+          <button type="submit">Add dish</button>
+        </form>
+
+        <h2>Menu editor</h2>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead><tr><th scope="col">Dish</th><th scope="col">Category</th><th scope="col">Price (₹)</th><th scope="col">Portions</th><th scope="col">Veg</th><th scope="col">Active</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+            <tbody id="admin-items"></tbody>
+          </table>
+        </div>
+
+        <h2>Orders</h2>
+        <label class="inline">Show
+          <select id="admin-order-filter">
+            <option value="">All statuses</option>
+            <option>CONFIRMED</option><option>PREPARING</option><option>OUT_FOR_DELIVERY</option><option>DELIVERED</option><option>CANCELLED</option>
+          </select>
+        </label>
+        <ul id="admin-orders" class="orders"></ul>
+      </section>
+    </main>
+  </div>
+
+  <template id="menu-card-template">
+    <li class="card">
+      <div class="card-head">
+        <h3 class="card-title"></h3>
+        <span class="badge veg-badge"></span>
+      </div>
+      <p class="card-category muted small"></p>
+      <p class="card-description"></p>
+      <div class="card-foot">
+        <span class="card-price"></span>
+        <span class="card-stock small"></span>
+      </div>
+      <div class="card-actions">
+        <label class="small">Qty <input class="card-qty" type="number" min="1" max="10" value="1"></label>
+        <button type="button" class="card-add">Add to cart</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="/script.js"></script>
+</body>
+</html>

@@ -7,8 +7,10 @@ the database engine is opened in the lifespan, when the server starts.
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractContextManager, asynccontextmanager
 from importlib.metadata import version
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from ai_restaurant_ordering_assistant.config.settings import get_settings
 from ai_restaurant_ordering_assistant.container import AppContainer, open_container
@@ -24,6 +26,8 @@ from ai_restaurant_ordering_assistant.exceptions.handlers import (
 )
 
 ContainerFactory = Callable[[], AbstractContextManager[AppContainer]]
+
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 
 APP_DESCRIPTION = """
 Order food from a fictional restaurant through this REST API, the web UI at `/`,
@@ -54,6 +58,8 @@ def create_app(container_factory: ContainerFactory | None = None) -> FastAPI:
     register_error_handling(app)
     for module in (health, auth, menu_items, orders, admin_orders):
         app.include_router(module.router)
+    # Mounted last so the API routes above take precedence over static files.
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
     return app
 
 
