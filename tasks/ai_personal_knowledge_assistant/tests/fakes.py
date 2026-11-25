@@ -5,6 +5,10 @@ import math
 import re
 from collections.abc import Sequence
 
+from ai_personal_knowledge_assistant.core.errors import VectorStoreError
+from ai_personal_knowledge_assistant.ingestion.chunker import Chunk
+from ai_personal_knowledge_assistant.vectorstore.chroma_store import ChromaVectorStore
+
 _TOKEN = re.compile(r"[a-z0-9]+")
 
 # Function words carry no topic, so they would make unrelated texts look similar.
@@ -63,3 +67,34 @@ class FakeEmbedder:
     def _bucket(self, word: str) -> int:
         digest = hashlib.blake2b(word.encode(), digest_size=8).digest()
         return int.from_bytes(digest) % (self._dimension - 1)
+
+
+class FlakyVectorStore(ChromaVectorStore):
+    """A real Chroma store with switchable faults, for testing failure cleanup.
+
+    With `fail_adds` set, `add_chunks` writes the first chunk and then raises,
+    like a write that dies halfway. With `fail_deletes` set, `delete_document`
+    raises without deleting anything.
+    """
+
+    fail_adds = False
+    fail_deletes = False
+
+    def add_chunks(
+        self, document_id: int, filename: str, chunks: Sequence[Chunk]
+    ) -> int:
+        if not self.fail_adds:
+            return super().add_chunks(document_id, filename, chunks)
+        super().add_chunks(document_id, filename, chunks[:1])
+        raise VectorStoreError(
+            f"store the chunks of document {document_id}",
+            RuntimeError("injected add fault"),
+        )
+
+    def delete_document(self, document_id: int) -> None:
+        if self.fail_deletes:
+            raise VectorStoreError(
+                f"delete the chunks of document {document_id}",
+                RuntimeError("injected delete fault"),
+            )
+        super().delete_document(document_id)

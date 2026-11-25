@@ -17,6 +17,10 @@ from uuid import UUID
 JsonObject = dict[str, Any]
 
 
+# Longest stored filename; MySQL's VARCHAR needs an explicit bound.
+FILENAME_MAX_LENGTH = 255
+
+
 class FileType(StrEnum):
     PDF = "pdf"
     DOCX = "docx"

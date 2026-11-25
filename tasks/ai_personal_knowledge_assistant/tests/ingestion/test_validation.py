@@ -171,6 +171,12 @@ def test_sanitize_filename_rejects_names_with_no_basename(raw: str) -> None:
         sanitize_filename(raw)
 
 
+def test_sanitize_filename_rejects_names_longer_than_the_stored_limit() -> None:
+    assert sanitize_filename("a" * 251 + ".pdf") == "a" * 251 + ".pdf"
+    with pytest.raises(UnsupportedFileError, match="limit is 255"):
+        sanitize_filename("a" * 252 + ".pdf")
+
+
 def test_validate_upload_returns_the_sanitized_name() -> None:
     upload = validate_upload("../../uploads/Travel.txt", b"hello", LIMIT)
 

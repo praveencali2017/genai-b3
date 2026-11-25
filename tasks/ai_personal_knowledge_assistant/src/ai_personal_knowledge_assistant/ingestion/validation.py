@@ -20,7 +20,10 @@ from ai_personal_knowledge_assistant.core.errors import (
     UnsupportedFileError,
 )
 from ai_personal_knowledge_assistant.ingestion.text_decoding import looks_binary
-from ai_personal_knowledge_assistant.storage.records import FileType
+from ai_personal_knowledge_assistant.storage.records import (
+    FILENAME_MAX_LENGTH,
+    FileType,
+)
 
 _FILE_TYPES_BY_EXTENSION = {f".{file_type.value}": file_type for file_type in FileType}
 _SUPPORTED_LIST = ", ".join(ext.upper().lstrip(".") for ext in _FILE_TYPES_BY_EXTENSION)
@@ -54,6 +57,11 @@ def sanitize_filename(filename: str) -> str:
     cleaned = _CONTROL_CHARACTERS.sub("", basename).strip()
     if cleaned in ("", ".", ".."):
         raise UnsupportedFileError(f"{filename!r} is not a usable file name.")
+    if len(cleaned) > FILENAME_MAX_LENGTH:
+        raise UnsupportedFileError(
+            f"File name is {len(cleaned)} characters; "
+            f"the limit is {FILENAME_MAX_LENGTH}. Rename the file and try again."
+        )
     return cleaned
 
 

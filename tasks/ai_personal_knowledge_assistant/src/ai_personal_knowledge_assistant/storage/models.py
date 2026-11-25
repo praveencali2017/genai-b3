@@ -30,13 +30,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeEngine
 
 from ai_personal_knowledge_assistant.storage.records import (
+    FILENAME_MAX_LENGTH,
     DocumentStatus,
     FileType,
     JsonObject,
     MessageRole,
 )
 
-FILENAME_MAX_LENGTH = 255
 SHA256_HEX_LENGTH = 64
 
 
