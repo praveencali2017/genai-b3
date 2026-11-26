@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Praveen's Travels</title>
+  <meta name="description" content="Browse and book fictional tour packages across India and plan trips with the AI travel assistant.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#packages" data-view-link="packages">
+        <span class="brand-mark" aria-hidden="true">🧭</span>
+        <span class="brand-text">Praveen's <em>Travels</em></span>
+      </a>
+
+      <nav class="nav" aria-label="Sections">
+        <button type="button" class="nav-link" data-view-link="packages" aria-current="page">Packages</button>
+        <button type="button" class="nav-link" data-view-link="bookings" data-requires="user" hidden>My bookings</button>
+        <button type="button" class="nav-link" data-view-link="admin" data-requires="admin" hidden>Admin</button>
+      </nav>
+
+      <div class="account">
+        <button type="button" id="sign-in-button" class="button button-primary">Sign in</button>
+        <div id="user-chip" class="user-chip" hidden>
+          <span id="user-avatar" class="avatar" aria-hidden="true"></span>
+          <span class="user-meta">
+            <strong id="user-name"></strong>
+            <span id="user-role" class="role-tag"></span>
+          </span>
+          <button type="button" id="sign-out-button" class="button button-ghost button-small">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================================================ Packages -->
+    <section id="view-packages" class="view" aria-labelledby="packages-title">
+      <div class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Mountains · Beaches · Backwaters</p>
+          <h1 id="packages-title">Your next trip, <span class="accent">planned in minutes.</span></h1>
+          <p class="lede">Browse upcoming departures, book seats in two clicks, or ask the AI assistant to find and book a trip for you.</p>
+          <form id="search-form" class="search" role="search">
+            <label class="sr-only" for="search-input">Search packages</label>
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input id="search-input" type="search" placeholder="Search Kashmir, beach, houseboat…" maxlength="100" autocomplete="off">
+            <button type="submit" class="button button-primary">Search</button>
+          </form>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <span class="float f1">🏔️</span><span class="float f2">🏖️</span>
+          <span class="float f3">🛶</span><span class="float f4">🌴</span>
+          <div class="globe">✈️</div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div id="destination-chips" class="chips" role="group" aria-label="Destination"></div>
+        <div class="filter-controls">
+          <label class="inline-field">Days
+            <select id="duration-filter">
+              <option value="">Any</option>
+              <option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option>
+            </select>
+          </label>
+          <label class="inline-field">From
+            <input id="start-filter" type="date">
+          </label>
+          <label class="price-filter">
+            <span>Budget <output id="max-price-label">any</output></span>
+            <input id="max-price" type="range" min="5000" max="45000" step="1000" value="45000" aria-label="Maximum price per traveller">
+          </label>
+        </div>
+      </div>
+      <p id="packages-status" class="status-line" aria-live="polite"></p>
+      <ul id="package-grid" class="package-grid"></ul>
+    </section>
+
+    <!-- ============================================================ Bookings -->
+    <section id="view-bookings" class="view" aria-labelledby="bookings-title" hidden>
+      <div class="page-head">
+        <h1 id="bookings-title">My bookings</h1>
+        <button type="button" id="bookings-refresh" class="button button-ghost">↻ Refresh</button>
+      </div>
+      <p class="muted small policy-note">Cancellation refunds: 100% at least 7 days before departure, 50% from 2 to 6 days, none within 2 days.</p>
+      <p id="bookings-status" class="status-line" aria-live="polite"></p>
+      <ul id="bookings-list" class="booking-list"></ul>
+    </section>
+
+    <!-- ============================================================ Admin -->
+    <section id="view-admin" class="view" aria-labelledby="admin-title" hidden>
+      <div class="page-head">
+        <h1 id="admin-title">Operator admin</h1>
+      </div>
+      <div class="segmented" role="tablist" aria-label="Admin sections">
+        <button type="button" role="tab" class="segment" id="admin-tab-packages" aria-controls="admin-packages" aria-selected="true">Packages</button>
+        <button type="button" role="tab" class="segment" id="admin-tab-bookings" aria-controls="admin-bookings" aria-selected="false">Bookings</button>
+        <button type="button" role="tab" class="segment" id="admin-tab-docs" aria-controls="admin-docs" aria-selected="false">Policy documents</button>
+      </div>
+
+      <div id="admin-packages" role="tabpanel" aria-labelledby="admin-tab-packages" class="admin-panel">
+        <form id="package-form" class="card form-grid">
+          <h2 class="span-all">Add a package</h2>
+          <label>Title<input name="title" required minlength="3" maxlength="120"></label>
+          <label>Destination<input name="destination" required minlength="2" maxlength="80"></label>
+          <label>Days<input name="duration_days" type="number" min="1" max="60" step="1" required></label>
+          <label>Price per traveller (₹)<input name="price" type="number" min="1" step="0.01" required></label>
+          <label>Seats<input name="capacity" type="number" min="0" step="1" required></label>
+          <label>Departure<input name="start_date" type="date" required></label>
+          <label class="span-2">Description<input name="description" maxlength="500"></label>
+          <button type="submit" class="button button-primary">Add package</button>
+        </form>
+        <div class="card table-card">
+          <table class="data-table">
+            <thead><tr><th scope="col">Package</th><th scope="col">Departure</th><th scope="col">Price (₹)</th><th scope="col">Seats</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody id="admin-package-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="admin-bookings" role="tabpanel" aria-labelledby="admin-tab-bookings" class="admin-panel" hidden>
+        <div class="toolbar">
+          <label>Show
+            <select id="admin-booking-filter">
+              <option value="">All bookings</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </label>
+        </div>
+        <ul id="admin-booking-list" class="booking-list"></ul>
+      </div>
+
+      <div id="admin-docs" role="tabpanel" aria-labelledby="admin-tab-docs" class="admin-panel" hidden>
+        <form id="doc-form" class="card dropzone">
+          <span class="dropzone-icon" aria-hidden="true">📄</span>
+          <h2>Upload a policy document</h2>
+          <p class="muted">PDF, DOCX or TXT. Uploading a file with an existing name creates a new version and retires the old one.</p>
+          <label class="button button-ghost file-pick">
+            Choose file<input id="doc-file" type="file" accept=".pdf,.docx,.txt" class="sr-only" required>
+          </label>
+          <p id="doc-file-name" class="muted small"></p>
+          <button type="submit" id="doc-upload" class="button button-primary" disabled>Upload &amp; index</button>
+        </form>
+        <div class="card table-card">
+          <table class="data-table">
+            <thead><tr><th scope="col">File</th><th scope="col">Version</th><th scope="col">Chunks</th><th scope="col">Status</th><th scope="col">Uploaded</th></tr></thead>
+            <tbody id="doc-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================ Chat -->
+  <button type="button" id="chat-fab" class="chat-fab" aria-controls="chat-drawer" aria-expanded="false">
+    <span aria-hidden="true">✨</span><span>Ask the assistant</span>
+  </button>
+
+  <aside id="chat-drawer" class="chat-drawer" aria-labelledby="chat-title" hidden>
+    <header class="chat-head">
+      <div class="chat-title-row">
+        <span class="bot-avatar" aria-hidden="true">🧳</span>
+        <div>
+          <h2 id="chat-title">Travel assistant</h2>
+          <p class="muted small">Packages, policies and bookings. You confirm every booking.</p>
+        </div>
+        <button type="button" id="chat-close" class="icon-button" aria-label="Close chat">✕</button>
+      </div>
+      <div class="chat-sessions">
+        <label class="sr-only" for="session-select">Conversation</label>
+        <select id="session-select"></select>
+        <button type="button" id="new-chat" class="button button-ghost button-small">＋ New chat</button>
+      </div>
+    </header>
+
+    <div id="chat-log" class="chat-log" aria-live="polite" aria-relevant="additions"></div>
+
+    <div id="chat-signed-out" class="chat-gate" hidden>
+      <span aria-hidden="true">🔐</span>
+      <p>Sign in to chat with the assistant.</p>
+      <button type="button" class="button button-primary" data-open-sign-in>Sign in</button>
+    </div>
+
+    <form id="chat-form" class="chat-composer">
+      <label class="sr-only" for="chat-input">Message</label>
+      <textarea id="chat-input" rows="1" maxlength="4000" placeholder="Ask anything, or “book Kashmir Explorer for 2”"></textarea>
+      <button type="submit" id="chat-send" class="send-button" aria-label="Send" disabled>➤</button>
+    </form>
+  </aside>
+
+  <!-- ============================================================ Book -->
+  <dialog id="book-dialog" class="dialog" aria-labelledby="book-title">
+    <form id="book-form" method="dialog" class="dialog-body">
+      <span id="book-mark" class="dialog-mark" aria-hidden="true">🧳</span>
+      <h2 id="book-title">Book this trip</h2>
+      <p id="book-summary" class="muted"></p>
+      <label>Travellers
+        <input id="book-travellers" type="number" min="1" max="10" step="1" value="1" required>
+      </label>
+      <div class="book-total"><span>Total</span><strong id="book-total">₹0</strong></div>
+      <p class="fine-print">The price is rechecked by the server when you confirm.</p>
+      <p id="book-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" id="book-cancel" class="button button-ghost">Not now</button>
+        <button type="submit" id="book-submit" class="button button-primary">Confirm booking</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ============================================================ Sign in -->
+  <dialog id="sign-in-dialog" class="dialog" aria-labelledby="sign-in-title">
+    <form id="sign-in-form" method="dialog" class="dialog-body">
+      <span class="dialog-mark" aria-hidden="true">🧭</span>
+      <h2 id="sign-in-title">Welcome back</h2>
+      <p class="muted">Sign in to book and chat. Demo accounts are listed in the README.</p>
+      <label>Username<input id="sign-in-username" autocomplete="username" required maxlength="50"></label>
+      <label>Password<input id="sign-in-password" type="password" autocomplete="current-password" required maxlength="128"></label>
+      <p id="sign-in-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" id="sign-in-cancel" class="button button-ghost">Cancel</button>
+        <button type="submit" id="sign-in-submit" class="button button-primary">Sign in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

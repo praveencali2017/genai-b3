@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Praveen's Kitchen</title>
+  <meta name="description" content="Order South and North Indian dishes and chat with the AI ordering assistant.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍛</text></svg>">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#menu" data-view-link="menu">
+        <span class="brand-mark" aria-hidden="true">🍛</span>
+        <span class="brand-text">Praveen's <em>Kitchen</em></span>
+      </a>
+
+      <nav class="nav" aria-label="Sections">
+        <button type="button" class="nav-link" data-view-link="menu" aria-current="page">Menu</button>
+        <button type="button" class="nav-link" data-view-link="orders" data-requires="user" hidden>My orders</button>
+        <button type="button" class="nav-link" data-view-link="admin" data-requires="admin" hidden>Admin</button>
+      </nav>
+
+      <div class="account">
+        <button type="button" id="cart-button" class="icon-button cart-button" aria-label="Open cart">
+          <span aria-hidden="true">🛒</span>
+          <span id="cart-count" class="count-badge" hidden>0</span>
+        </button>
+        <button type="button" id="sign-in-button" class="button button-primary">Sign in</button>
+        <div id="user-chip" class="user-chip" hidden>
+          <span id="user-avatar" class="avatar" aria-hidden="true"></span>
+          <span class="user-meta">
+            <strong id="user-name"></strong>
+            <span id="user-role" class="role-tag"></span>
+          </span>
+          <button type="button" id="sign-out-button" class="button button-ghost button-small">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================================================ Menu -->
+    <section id="view-menu" class="view" aria-labelledby="menu-title">
+      <div class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">South &amp; North Indian · Fresh every day</p>
+          <h1 id="menu-title">Comfort food, <span class="accent">cooked to order.</span></h1>
+          <p class="lede">Browse the menu, fill your cart, or just ask our AI assistant to order for you.</p>
+          <form id="search-form" class="search" role="search">
+            <label class="sr-only" for="search-input">Search dishes</label>
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input id="search-input" type="search" placeholder="Search dosa, biryani, lassi…" maxlength="100" autocomplete="off">
+            <button type="submit" class="button button-primary">Search</button>
+          </form>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <span class="float f1">🥘</span><span class="float f2">🫓</span>
+          <span class="float f3">🍚</span><span class="float f4">🥭</span>
+          <div class="plate">🍛</div>
+        </div>
+      </div>
+
+      <div class="menu-layout">
+        <div class="menu-main">
+          <div class="filter-bar">
+            <div id="category-chips" class="chips" role="group" aria-label="Category"></div>
+            <div class="filter-controls">
+              <label class="switch">
+                <input id="veg-only" type="checkbox">
+                <span class="switch-track" aria-hidden="true"></span>
+                <span>Veg only</span>
+              </label>
+              <label class="price-filter">
+                <span>Max <output id="max-price-label">any</output></span>
+                <input id="max-price" type="range" min="50" max="300" step="10" value="300" aria-label="Maximum price">
+              </label>
+            </div>
+          </div>
+          <p id="menu-status" class="status-line" aria-live="polite"></p>
+          <ul id="menu-grid" class="menu-grid"></ul>
+        </div>
+
+        <aside id="cart-panel" class="cart" aria-labelledby="cart-title">
+          <div class="cart-head">
+            <h2 id="cart-title">Your order</h2>
+            <button type="button" id="cart-close" class="icon-button cart-close" aria-label="Close cart">✕</button>
+          </div>
+          <div id="cart-empty" class="empty-state small">
+            <span aria-hidden="true">🧺</span>
+            <p>Your cart is empty.<br>Add something delicious!</p>
+          </div>
+          <ul id="cart-lines" class="cart-lines"></ul>
+          <div class="cart-foot">
+            <div class="cart-total"><span>Total</span><strong id="cart-total">₹0</strong></div>
+            <p class="fine-print">Prices are confirmed by the kitchen when you order.</p>
+            <button id="place-order" type="button" class="button button-primary button-block" disabled>Place order</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================================ Orders -->
+    <section id="view-orders" class="view" aria-labelledby="orders-title" hidden>
+      <div class="page-head">
+        <h1 id="orders-title">My orders</h1>
+        <button type="button" id="orders-refresh" class="button button-ghost">↻ Refresh</button>
+      </div>
+      <p id="orders-status" class="status-line" aria-live="polite"></p>
+      <ul id="orders-list" class="order-list"></ul>
+    </section>
+
+    <!-- ============================================================ Admin -->
+    <section id="view-admin" class="view" aria-labelledby="admin-title" hidden>
+      <div class="page-head">
+        <h1 id="admin-title">Kitchen admin</h1>
+      </div>
+      <div class="segmented" role="tablist" aria-label="Admin sections">
+        <button type="button" role="tab" class="segment" id="admin-tab-items" aria-controls="admin-items" aria-selected="true">Menu items</button>
+        <button type="button" role="tab" class="segment" id="admin-tab-orders" aria-controls="admin-orders" aria-selected="false">Orders</button>
+        <button type="button" role="tab" class="segment" id="admin-tab-docs" aria-controls="admin-docs" aria-selected="false">Policy documents</button>
+      </div>
+
+      <div id="admin-items" role="tabpanel" aria-labelledby="admin-tab-items" class="admin-panel">
+        <form id="item-form" class="card form-grid">
+          <h2 class="span-all">Add a dish</h2>
+          <label>Name<input name="title" required maxlength="100"></label>
+          <label>Category
+            <select name="category" required>
+              <option>Breakfast</option><option>Main course</option><option>Dessert</option><option>Beverages</option>
+            </select>
+          </label>
+          <label>Price (₹)<input name="price" type="number" min="1" step="0.01" required></label>
+          <label>Portions<input name="capacity" type="number" min="0" step="1" required></label>
+          <label class="span-all">Description<input name="description" maxlength="500"></label>
+          <label class="check"><input name="vegetarian" type="checkbox" checked> Vegetarian</label>
+          <button type="submit" class="button button-primary">Add dish</button>
+        </form>
+        <div class="card table-card">
+          <table class="data-table">
+            <thead><tr><th scope="col">Dish</th><th scope="col">Price (₹)</th><th scope="col">Portions</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody id="admin-item-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="admin-orders" role="tabpanel" aria-labelledby="admin-tab-orders" class="admin-panel" hidden>
+        <div class="toolbar">
+          <label>Show
+            <select id="admin-order-filter">
+              <option value="">All orders</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="PREPARING">Preparing</option>
+              <option value="OUT_FOR_DELIVERY">Out for delivery</option>
+              <option value="DELIVERED">Delivered</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </label>
+        </div>
+        <ul id="admin-order-list" class="order-list"></ul>
+      </div>
+
+      <div id="admin-docs" role="tabpanel" aria-labelledby="admin-tab-docs" class="admin-panel" hidden>
+        <form id="doc-form" class="card dropzone">
+          <span class="dropzone-icon" aria-hidden="true">📄</span>
+          <h2>Upload a policy document</h2>
+          <p class="muted">PDF, DOCX or TXT. Uploading a file with an existing name creates a new version and retires the old one.</p>
+          <label class="button button-ghost file-pick">
+            Choose file<input id="doc-file" type="file" accept=".pdf,.docx,.txt" class="sr-only" required>
+          </label>
+          <p id="doc-file-name" class="muted small"></p>
+          <button type="submit" id="doc-upload" class="button button-primary" disabled>Upload &amp; index</button>
+        </form>
+        <div class="card table-card">
+          <table class="data-table">
+            <thead><tr><th scope="col">File</th><th scope="col">Version</th><th scope="col">Chunks</th><th scope="col">Status</th><th scope="col">Uploaded</th></tr></thead>
+            <tbody id="doc-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================ Chat -->
+  <button type="button" id="chat-fab" class="chat-fab" aria-controls="chat-drawer" aria-expanded="false">
+    <span aria-hidden="true">✨</span><span>Ask the assistant</span>
+  </button>
+
+  <aside id="chat-drawer" class="chat-drawer" aria-labelledby="chat-title" hidden>
+    <header class="chat-head">
+      <div class="chat-title-row">
+        <span class="bot-avatar" aria-hidden="true">🧑‍🍳</span>
+        <div>
+          <h2 id="chat-title">Kitchen assistant</h2>
+          <p class="muted small">Menu, policies and orders. You confirm every order.</p>
+        </div>
+        <button type="button" id="chat-close" class="icon-button" aria-label="Close chat">✕</button>
+      </div>
+      <div class="chat-sessions">
+        <label class="sr-only" for="session-select">Conversation</label>
+        <select id="session-select"></select>
+        <button type="button" id="new-chat" class="button button-ghost button-small">＋ New chat</button>
+      </div>
+    </header>
+
+    <div id="chat-log" class="chat-log" aria-live="polite" aria-relevant="additions"></div>
+
+    <div id="chat-signed-out" class="chat-gate" hidden>
+      <span aria-hidden="true">🔐</span>
+      <p>Sign in to chat with the assistant.</p>
+      <button type="button" class="button button-primary" data-open-sign-in>Sign in</button>
+    </div>
+
+    <form id="chat-form" class="chat-composer">
+      <label class="sr-only" for="chat-input">Message</label>
+      <textarea id="chat-input" rows="1" maxlength="2000" placeholder="Ask anything, or “order 2 masala dosa”"></textarea>
+      <button type="submit" id="chat-send" class="send-button" aria-label="Send" disabled>➤</button>
+    </form>
+  </aside>
+
+  <!-- ============================================================ Sign in -->
+  <dialog id="sign-in-dialog" class="dialog" aria-labelledby="sign-in-title">
+    <form id="sign-in-form" method="dialog" class="dialog-body">
+      <span class="dialog-mark" aria-hidden="true">🍛</span>
+      <h2 id="sign-in-title">Welcome back</h2>
+      <p class="muted">Sign in to order and chat. Demo accounts are listed in the README.</p>
+      <label>Username<input id="sign-in-username" autocomplete="username" required maxlength="50"></label>
+      <label>Password<input id="sign-in-password" type="password" autocomplete="current-password" required maxlength="128"></label>
+      <p id="sign-in-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" id="sign-in-cancel" class="button button-ghost">Cancel</button>
+        <button type="submit" id="sign-in-submit" class="button button-primary">Sign in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+Praveen's Travels - Frequently Asked Questions
+Version 1.0 - Effective 2026-01-01
+
+Q: How do I book a package?
+A: Sign in, choose a package, pick the number of travellers and confirm. You can
+also ask the AI travel assistant to find and book a package; it always asks you
+to press Confirm before anything is booked.
+
+Q: Is the price shown the final price?
+A: Yes. Prices are per traveller and include accommodation, local transfers and
+the activities listed in the package description. Flights to the starting city
+and travel insurance are not included.
+
+Q: How many travellers can I book at once?
+A: Up to 10 travellers per package in one booking.
+
+Q: Can I cancel my booking?
+A: Yes, before the departure date. The refund depends on how many days before
+departure you cancel; see the Cancellation Policy for the exact rules.
+
+Q: When will I receive my refund?
+A: Within 7 business days, to the original payment method.
+
+Q: Can I change the travel date?
+A: A date change is treated as a cancellation and a new booking. See the
+Cancellation Policy.
+
+Q: Do children pay?
+A: Children under 5 travel free without their own seat. Children aged 5 and over
+pay the full price.
+
+Q: Is travel insurance included?
+A: No. We strongly recommend buying travel insurance separately.
+
+Q: How do I contact support?
+A: Email support@praveens-travels.example or call +91 80 0000 0000 between
+09:00 and 18:00 IST, Monday to Saturday.

@@ -1,0 +1,51 @@
+[project]
+name = "ai-restaurant-ordering-assistant"
+version = "0.1.0"
+description = "Food ordering app with a REST API, a web UI and one AI chatbot that answers questions, cites policy documents (RAG) and places orders through a single tool-calling agent"
+readme = "README.md"
+authors = [
+    { name = "Praveen", email = "praveenknjun12@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.1",
+    "argon2-cffi>=25.1.0",
+    "chromadb>=1.5.9",
+    # PyMySQL needs it to log in to MySQL 8 (caching_sha2_password).
+    "cryptography>=50.0.2",
+    "fastapi[standard]>=0.163.1",
+    "httpx>=0.28.1",
+    "openai>=3.51.0",
+    "pydantic-settings>=2.16.3",
+    "pymupdf>=2.1",
+    "pymysql>=1.2.4",
+    "python-docx>=1.2.0",
+    "sqlalchemy>=2.1.9",
+]
+
+[project.scripts]
+restaurant-api = "ai_restaurant_ordering_assistant.cli:run_api"
+restaurant-seed = "ai_restaurant_ordering_assistant.cli:run_seed"
+restaurant-index = "ai_restaurant_ordering_assistant.cli:run_index"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fpdf2>=2.9.0",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src", "scripts", "migrations"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, pyupgrade, bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ai_restaurant_ordering_assistant"]

@@ -1,0 +1,22 @@
+Delivery FAQ
+Version 1.0 - Effective 2026-01-01
+
+Q: How long does delivery take?
+A: Most deliveries arrive within 45-60 minutes during peak hours, and 30-45
+minutes during off-peak hours.
+
+Q: What areas do you deliver to?
+A: We deliver within a 5 km radius of the restaurant. Delivery is free for
+orders over INR 500.
+
+Q: Can I track my order?
+A: Yes. Once your order is OUT_FOR_DELIVERY, you can check its status in
+"My Orders" or ask the chatbot.
+
+Q: What if my order is late?
+A: If your order is more than 30 minutes past the estimated time, contact
+us and we will prioritize your delivery or issue a refund.
+
+Q: Can I change my delivery address after ordering?
+A: Address changes are only possible before the order enters PREPARING
+status. Contact us immediately if you need to change your address.
